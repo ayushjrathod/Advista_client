@@ -36,7 +36,7 @@ export default function SignInForm() {
 
     setIsLoading(true);
     try {
-      const response = await api.post("/api/v1/auth/signin", {
+      await api.post("/api/v1/auth/signin", {
         email,
         password,
       });

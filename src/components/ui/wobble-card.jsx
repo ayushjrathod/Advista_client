@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import { useState } from "react";
 
 export const WobbleCard = ({ children, containerClassName, className }) => {
@@ -14,7 +14,7 @@ export const WobbleCard = ({ children, containerClassName, className }) => {
   };
 
   return (
-    <motion.section
+    <Motion.section
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => {
@@ -41,6 +41,6 @@ export const WobbleCard = ({ children, containerClassName, className }) => {
       >
         {children}
       </div>
-    </motion.section>
+    </Motion.section>
   );
 };

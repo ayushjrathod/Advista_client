@@ -8,6 +8,7 @@ import SignUpForm from "./pages/auth/signup";
 import VerifyAccount from "./pages/auth/verify";
 import ChatBot from "./pages/chatbot";
 import LandingPage from "./pages/landingPage";
+import ResearchReport from "./pages/research-report";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordForm />} />
           <Route path="/reset-password/:email" element={<ResetPasswordForm />} />
           <Route path="/chat" element={<ChatBot />} />
+          <Route path="/research-report" element={<ResearchReport />} />
         </Routes>
       </Router>
     </AuthProvider>

@@ -8,8 +8,6 @@ export const Spotlight = ({
   width = 560,
   height = 1380,
   smallWidth = 240,
-  duration = 7,
-  xOffset = 100,
 } = {}) => {
   return (
     <div className="pointer-events-none absolute inset-0 h-full w-full">
