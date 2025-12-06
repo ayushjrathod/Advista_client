@@ -1,10 +1,12 @@
 import SmokeSceneComponent from "@/components/landing/SmokeScreenComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Bot, User } from "lucide-react";
+import { Bot, Loader2, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function ChatBot() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -12,6 +14,7 @@ export default function ChatBot() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [researchBrief, setResearchBrief] = useState(null);
   const [showBriefPreview, setShowBriefPreview] = useState(false);
+  const [isResearching, setIsResearching] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -108,32 +111,95 @@ export default function ChatBot() {
     if (!researchBrief?.brief) return;
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/chat/start-research`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ research_brief: researchBrief.brief }),
-      });
+      setIsResearching(true);
+      setShowBriefPreview(false);
 
-      if (res.ok) {
-        const data = await res.json();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now(),
-            role: "bot",
-            content: `✅ ${data.message} I'll now begin analyzing your product and market. This may take a few moments...`,
+      // Add progress message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "bot",
+          content: "🔍 Starting research... I'm gathering market data and analyzing your product.",
+        },
+      ]);
+
+      // Step 1: Start research (runs SerpAPI searches)
+      const searchRes = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/research/start-research`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        ]);
-        setShowBriefPreview(false);
-      } else {
-        throw new Error("Failed to start research");
-      }
+          credentials: "include",
+          body: JSON.stringify({ research_brief: researchBrief.brief }),
+        }
+      );
+
+      if (!searchRes.ok) throw new Error("Failed to start research");
+
+      // Update progress
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "bot",
+          content: "📊 Processing search results and analyzing data...",
+        },
+      ]);
+
+      // Step 2: Process results
+      const processRes = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/research/process-existing`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!processRes.ok) throw new Error("Failed to process results");
+
+      // Update progress
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "bot",
+          content: "🧠 Synthesizing insights with AI... Almost done!",
+        },
+      ]);
+
+      // Step 3: Synthesize report
+      const synthesizeRes = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/research/synthesize`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!synthesizeRes.ok) throw new Error("Failed to synthesize report");
+      const reportData = await synthesizeRes.json();
+
+      // Success - navigate to report page with the data
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "bot",
+          content: "✅ Research complete! Redirecting to your report...",
+        },
+      ]);
+
+      // Small delay for UX
+      setTimeout(() => {
+        navigate("/research-report", { state: { report: reportData.report } });
+      }, 1000);
     } catch (error) {
-      console.error("Error starting research:", error);
-      setErrorMessage("Failed to start research. Please try again.");
+      console.error("Error in research pipeline:", error);
+      setErrorMessage("Failed to complete research. Please try again.");
+      setIsResearching(false);
     }
   };
 
@@ -331,9 +397,17 @@ export default function ChatBot() {
               <div className="mt-4 flex flex-col gap-2">
                 <button
                   onClick={handleConfirmBrief}
-                  className="w-full bg-gradient-to-br from-violet-950/35 to-zinc-900/35 text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow-lg cursor-pointer"
+                  disabled={isResearching}
+                  className="w-full bg-gradient-to-br from-violet-950/35 to-zinc-900/35 text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  ✓ Confirm & Start Research
+                  {isResearching ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Researching...
+                    </>
+                  ) : (
+                    "✓ Confirm & Start Research"
+                  )}
                 </button>
               </div>
             )}

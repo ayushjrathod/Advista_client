@@ -1,5 +1,4 @@
 import { FloatingNav } from "@/components/landing/floating-navbar";
-import { MaintenanceBanner } from "@/components/ui/maintenance-banner";
 import { ArrowLeft, HomeIcon, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -12,7 +11,6 @@ export default function AboutPage() {
 
   return (
     <div className="relative min-h-screen bg-black">
-      <MaintenanceBanner />
       <FloatingNav className="" navItems={navItems} />
 
       <main className="relative min-h-screen">

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion as Motion } from "framer-motion";
 import { ChevronDown, LogOut, Settings, User } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -18,7 +18,7 @@ export const FloatingNav = ({ navItems, className }) => {
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div
+      <Motion.div
         initial={{
           opacity: 1,
           y: -100,
@@ -89,7 +89,7 @@ export const FloatingNav = ({ navItems, className }) => {
             <span className="absolute inset-x-0 w-1/2 mx-auto -bottom-px bg-gradient-to-r from-transparent via-blue-500 to-transparent  h-px" />
           </button>
         )}
-      </motion.div>
+      </Motion.div>
     </AnimatePresence>
   );
 };
