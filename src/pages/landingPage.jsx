@@ -2,7 +2,6 @@ import { About } from "@/components/landing/About";
 import { FloatingNav } from "@/components/landing/floating-navbar";
 import HeroButton from "@/components/landing/HeroButton";
 import SplineComponent from "@/components/landing/SplineComponent";
-import { MaintenanceBanner } from "@/components/ui/maintenance-banner";
 import { Spotlight } from "@/components/ui/spotlight-new";
 import { HomeIcon, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -16,14 +15,13 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen bg-black">
-      <MaintenanceBanner />
       <FloatingNav className="" navItems={navItems} />
       {/* <SmokeSceneComponent /> */}
       <main className="relative min-h-screen flex items-center bg-transparent">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between">
           <div className="text-left lg:w-1/2 mb-8 lg:mb-0">
             {/* <GlowingButton /> */}
-            <h1 className="pt-6 text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4">Welcome to advista </h1>
+            <h1 className="pt-6 text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4">Welcome to advista</h1>
             <p className="text-xl sm:text-2xl md:text-2xl text-gray-400 mb-8 mx-2">
               AI-powered research. Human-centered insights
             </p>
@@ -37,7 +35,7 @@ export default function LandingPage() {
           <SplineComponent />
         </div>
       </main>
-      <div className="m-24">
+      <div className="m-4 md:m-12 lg:m-24">
         <About />
       </div>
 
