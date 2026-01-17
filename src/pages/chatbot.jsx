@@ -20,11 +20,10 @@ export default function ChatBot() {
   const inputRef = useRef(null);
   const initializationDone = useRef(false);
 
-  const scrollToBottom = () => {
+  // Scroll to bottom when messages change
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(scrollToBottom, [messages]);
+  }, [messages]);
 
   // Refocus input field after sending a message
   useEffect(() => {
@@ -50,12 +49,9 @@ export default function ChatBot() {
               "Hi! I'm Advista Research Assistant. I'll ask you a few quick questions to create your advertising research brief. What product or service would you like to advertise?",
           },
         ]);
-        // Generate a thread id for streaming conversations
-        const tid =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        setThreadId(tid);
+        const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/chat/initilize-thread`, { method: "POST", credentials: "include" });
+        const { thread_id } = await res.json();
+        setThreadId(thread_id);
       } catch (error) {
         console.error("Error initializing chat:", error);
         setErrorMessage("Something went wrong while starting the chat. Please try again.");
