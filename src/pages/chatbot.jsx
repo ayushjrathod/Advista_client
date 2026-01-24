@@ -4,9 +4,11 @@ import { cn } from "@/lib/utils";
 import { Bot, Loader2, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ChatBot() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -50,12 +52,6 @@ export default function ChatBot() {
               "Hi! I'm Advista Research Assistant. I'll ask you a few quick questions to create your advertising research brief. What product or service would you like to advertise?",
           },
         ]);
-        // Generate a thread id for streaming conversations
-        const tid =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        setThreadId(tid);
       } catch (error) {
         console.error("Error initializing chat:", error);
         setErrorMessage("Something went wrong while starting the chat. Please try again.");
@@ -68,23 +64,35 @@ export default function ChatBot() {
   }, []);
 
   const sendUserMessage = async (message) => {
-    if (!threadId) {
-      setErrorMessage("Chat not initialized. Please refresh and try again.");
-      return;
-    }
-
     // Add user message
     setMessages((prev) => [...prev, { id: Date.now(), role: "user", content: message }]);
     setInput("");
 
-    // Reset textarea height
+    const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/chat/initilize-thread`, {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      setErrorMessage("Chat not initialized. Please refresh and try again.");
+      setInput(message);
+      return;
+    }
+    const data = await res.json();
+    const tid = data.thread_id;
+    setThreadId(tid);
+
+    if (!tid) {
+      setErrorMessage("Chat not initialized. Please refresh and try again.");
+      setInput(message);
+      return;
+    }
+
+    //reset textarea height
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
     }
-
-    setErrorMessage(null);
-    await sendStreamingMessage(message, threadId);
-  };
+    await sendStreamingMessage(message, tid);
+  };;
+ 
 
   const fetchResearchBrief = async (tid) => {
     try {
@@ -108,7 +116,7 @@ export default function ChatBot() {
   };
 
   const handleConfirmBrief = async () => {
-    if (!researchBrief?.brief) return;
+    if (!researchBrief?.brief || !threadId) return;
 
     try {
       setIsResearching(true);
@@ -124,7 +132,6 @@ export default function ChatBot() {
         },
       ]);
 
-      // Step 1: Start research (runs SerpAPI searches)
       const searchRes = await fetch(
         `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/research/start-research`,
         {
@@ -133,11 +140,21 @@ export default function ChatBot() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({ research_brief: researchBrief.brief }),
+          body: JSON.stringify({ 
+            research_brief: researchBrief.brief,
+            threadId: threadId,
+            ...(user?.id ? { userId: user.id } : {})
+          }),
         }
       );
 
-      if (!searchRes.ok) throw new Error("Failed to start research");
+      if (!searchRes.ok) {
+        const errorData = await searchRes.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to start research");
+      }
+
+      // Parse JSON response
+      const data = await searchRes.json();
 
       // Update progress
       setMessages((prev) => [
@@ -149,16 +166,7 @@ export default function ChatBot() {
         },
       ]);
 
-      // Step 2: Process results
-      const processRes = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/research/process-existing`,
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
-
-      if (!processRes.ok) throw new Error("Failed to process results");
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay for UX
 
       // Update progress
       setMessages((prev) => [
@@ -170,17 +178,7 @@ export default function ChatBot() {
         },
       ]);
 
-      // Step 3: Synthesize report
-      const synthesizeRes = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/research/synthesize`,
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
-
-      if (!synthesizeRes.ok) throw new Error("Failed to synthesize report");
-      const reportData = await synthesizeRes.json();
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay for UX
 
       // Success - navigate to report page with the data
       setMessages((prev) => [
@@ -191,14 +189,28 @@ export default function ChatBot() {
           content: "✅ Research complete! Redirecting to your report...",
         },
       ]);
+      
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay for UX
 
-      // Small delay for UX
-      setTimeout(() => {
-        navigate("/research-report", { state: { report: reportData.report } });
-      }, 1000);
+      navigate("/research-report", {
+        state: {
+          report: data.report,
+          sessionId: data.session_id,
+          brief: data.brief
+        }
+      });
+
     } catch (error) {
       console.error("Error in research pipeline:", error);
-      setErrorMessage("Failed to complete research. Please try again.");
+      setErrorMessage(error.message || "Failed to complete research. Please try again.");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "bot",
+          content: `❌ Error: ${error.message || "Failed to complete research. Please try again."}`,
+        },
+      ]);
       setIsResearching(false);
     }
   };
@@ -212,7 +224,7 @@ export default function ChatBot() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "text/event-stream",
+            Accept: "text/event-stream",
         },
         credentials: "include", // Include cookies
         body: JSON.stringify({ thread_id: tid, message }),
