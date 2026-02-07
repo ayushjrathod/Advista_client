@@ -77,7 +77,16 @@ export default function ChatBot() {
       return;
     }
     const data = await res.json();
-    const tid = data.thread_id;
+    // Unwrap Lambda response envelope if present: { statusCode, body, headers }
+    let payload = data;
+    if (typeof data.body === "string") {
+      try {
+        payload = JSON.parse(data.body);
+      } catch (_) {
+        payload = data;
+      }
+    }
+    const tid = payload.thread_id;
     setThreadId(tid);
 
     if (!tid) {
