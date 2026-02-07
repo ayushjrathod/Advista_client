@@ -1,6 +1,7 @@
 import SmokeSceneComponent from "@/components/landing/SmokeScreenComponent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { unwrapLambdaResponse } from "@/lib/lambdaResponse";
 import { Bot, Loader2, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -77,16 +78,8 @@ export default function ChatBot() {
       return;
     }
     const data = await res.json();
-    // Unwrap Lambda response envelope if present: { statusCode, body, headers }
-    let payload = data;
-    if (typeof data.body === "string") {
-      try {
-        payload = JSON.parse(data.body);
-      } catch (_) {
-        payload = data;
-      }
-    }
-    const tid = payload.thread_id;
+    const payload = unwrapLambdaResponse(data);
+    const tid = payload?.thread_id;
     setThreadId(tid);
 
     if (!tid) {
@@ -113,9 +106,10 @@ export default function ChatBot() {
       );
       if (res.ok) {
         const data = await res.json();
-        setResearchBrief(data);
+        const payload = unwrapLambdaResponse(data);
+        setResearchBrief(payload);
         // Show preview if brief has any progress at all
-        if (data.is_complete || data.completion_percentage > 0) {
+        if (payload?.is_complete || (payload?.completion_percentage ?? 0) > 0) {
           setShowBriefPreview(true);
         }
       }
@@ -158,12 +152,14 @@ export default function ChatBot() {
       );
 
       if (!searchRes.ok) {
-        const errorData = await searchRes.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Failed to start research");
+        const rawError = await searchRes.json().catch(() => ({}));
+        const errorData = unwrapLambdaResponse(rawError);
+        throw new Error(errorData?.detail || "Failed to start research");
       }
 
-      // Parse JSON response
-      const data = await searchRes.json();
+      // Parse JSON response (unwrap Lambda envelope if present)
+      const rawData = await searchRes.json();
+      const data = unwrapLambdaResponse(rawData);
 
       // Update progress
       setMessages((prev) => [
@@ -257,39 +253,42 @@ export default function ChatBot() {
 
       while (true) {
         const { value, done } = await reader.read();
-        if (done) break;
         buffer += decoder.decode(value, { stream: true });
+        if (done) break;
+      }
 
-        // SSE frames separated by double newlines
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() || ""; // keep last partial
+      // Unwrap Lambda envelope if present (body may contain the SSE stream)
+      if (buffer.trim().startsWith("{")) {
+        try {
+          const parsed = JSON.parse(buffer);
+          if (parsed != null && typeof parsed === "object" && "body" in parsed && typeof parsed.body === "string") {
+            buffer = parsed.body;
+          }
+        } catch {
+          // not envelope, use buffer as-is for SSE
+        }
+      }
 
-        for (const part of parts) {
-          const line = part.trim();
-          if (!line) continue;
-          // Expect lines like: "data: <chunk>"
-          const prefix = "data:";
-          if (line.startsWith(prefix)) {
-            const chunk = line.slice(prefix.length).trim();
-            if (chunk) {
-              // Add bot message only when we receive the first chunk
-              if (!botMessageAdded) {
-                setMessages((prev) => [
-                  ...prev,
-                  {
-                    id: botId,
-                    role: "bot",
-                    content: chunk,
-                  },
-                ]);
-                botMessageAdded = true;
-                setIsLoading(false); // Stop showing loading indicator
-              } else {
-                // Update existing bot message
-                setMessages((prev) =>
-                  prev.map((m) => (m.id === botId ? { ...m, content: (m.content || "") + chunk } : m))
-                );
-              }
+      // Process SSE: frames separated by double newlines
+      const parts = buffer.split("\n\n");
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line) continue;
+        const prefix = "data:";
+        if (line.startsWith(prefix)) {
+          const chunk = line.slice(prefix.length).trim();
+          if (chunk) {
+            if (!botMessageAdded) {
+              setMessages((prev) => [
+                ...prev,
+                { id: botId, role: "bot", content: chunk },
+              ]);
+              botMessageAdded = true;
+              setIsLoading(false);
+            } else {
+              setMessages((prev) =>
+                prev.map((m) => (m.id === botId ? { ...m, content: (m.content || "") + chunk } : m))
+              );
             }
           }
         }

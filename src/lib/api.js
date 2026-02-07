@@ -1,4 +1,5 @@
 import axios from "axios";
+import { unwrapLambdaResponse } from "./lambdaResponse";
 
 // Get API URL from environment or use default
 const getApiUrl = () => {
@@ -16,7 +17,13 @@ const api = axios.create({
   withCredentials: true, // Enable credentials for CORS
 });
 
-// No interceptors needed - cookies are handled automatically by the browser
+// Unwrap Lambda Function URL envelope so callers get response.data as the actual body
+api.interceptors.response.use((response) => {
+  if (response?.data != null && typeof response.data === "object" && "body" in response.data && "statusCode" in response.data) {
+    response.data = unwrapLambdaResponse(response.data);
+  }
+  return response;
+});
 
 // Logout function
 export const logout = async () => {

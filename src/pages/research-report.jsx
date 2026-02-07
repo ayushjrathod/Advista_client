@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { unwrapLambdaResponse } from "@/lib/lambdaResponse";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -197,7 +198,8 @@ export default function ResearchReport() {
         });
         if (!res.ok) throw new Error("Failed to fetch report");
         const data = await res.json();
-        setReport(data.report);
+        const payload = unwrapLambdaResponse(data);
+        setReport(payload?.report ?? payload);
       } catch (err) {
         setError(err.message);
       } finally {
