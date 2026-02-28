@@ -69,7 +69,7 @@ export default function ChatBot() {
     setMessages((prev) => [...prev, { id: Date.now(), role: "user", content: message }]);
     setInput("");
 
-    const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/chat/initilize-thread`, {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/chat/initialize-thread`, {
       credentials: "include",
     });
     if (!res.ok) {
@@ -93,7 +93,7 @@ export default function ChatBot() {
       inputRef.current.style.height = "auto";
     }
     await sendStreamingMessage(message, tid);
-  };;
+  };
  
 
   const fetchResearchBrief = async (tid) => {
@@ -197,11 +197,13 @@ export default function ChatBot() {
       
       await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay for UX
 
-      navigate("/research-report", {
+      const sessionId = data.session_id;
+      navigate(`/research-report${sessionId ? `?session_id=${sessionId}` : ""}`, {
         state: {
           report: data.report,
-          sessionId: data.session_id,
-          brief: data.brief
+          sessionId,
+          brief: data.brief,
+          resourcesUsed: data.resources_used,
         }
       });
 

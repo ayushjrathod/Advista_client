@@ -21,9 +21,11 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between">
           <div className="text-left lg:w-1/2 mb-8 lg:mb-0">
             {/* <GlowingButton /> */}
-            <h1 className="pt-6 text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4">Welcome to advista</h1>
-            <p className="text-xl sm:text-2xl md:text-2xl text-gray-400 mb-8 mx-2">
-              AI-powered research. Human-centered insights
+            <h1 className="pt-6 text-4xl sm:text-5xl md:text-5xl font-bold text-white mb-4">
+              Market insights in minutes, not weeks.
+            </h1>
+            <p className="text-xl sm:text-2xl md:text-2xl text-zinc-400 mb-8 mx-2">
+              Delegate product marketing research to us, so you can focus on what matters.
             </p>
             <div className="flex flex-col">
               <Link to="/chat">
@@ -39,7 +41,7 @@ export default function LandingPage() {
         <About />
       </div>
 
-      <footer className="relative z-10 w-full py-12 text-center text-gray-400">
+      <footer className="relative z-10 w-full py-12 text-center text-zinc-400">
         <p>&copy; {new Date().getFullYear()} Advista. All rights reserved.</p>
       </footer>
     </div>

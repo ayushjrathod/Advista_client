@@ -1,4 +1,4 @@
-import api from "./api";
+import axios from "axios";
 
 /**
  * Handles API errors consistently across the application
@@ -14,7 +14,7 @@ export const handleApiError = (
 ) => {
   let errorMessage = defaultMessage;
 
-  if (api.isAxiosError && api.isAxiosError(error)) {
+  if (axios.isAxiosError(error)) {
     if (error.response) {
       // Server responded with error status
       errorMessage =

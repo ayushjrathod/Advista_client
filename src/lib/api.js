@@ -3,8 +3,7 @@ import { unwrapLambdaResponse } from "./lambdaResponse";
 
 // Get API URL from environment or use default
 const getApiUrl = () => {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl) return envUrl;
+  return import.meta.env.VITE_API_URL || "http://localhost:8000";
 };
 
 // Create axios instance with base URL from environment
@@ -24,18 +23,5 @@ api.interceptors.response.use((response) => {
   }
   return response;
 });
-
-// Logout function
-export const logout = async () => {
-  try {
-    await api.post("/api/v1/auth/logout");
-    // Redirect to sign-in page
-    window.location.href = "/sign-in";
-  } catch (error) {
-    console.error("Logout error:", error);
-    // Still redirect even if logout fails
-    window.location.href = "/sign-in";
-  }
-};
 
 export default api;
