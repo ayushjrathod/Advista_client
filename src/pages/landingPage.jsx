@@ -1,17 +1,76 @@
-import { About } from "@/components/landing/About";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { FloatingNav } from "@/components/landing/floating-navbar";
 import HeroButton from "@/components/landing/HeroButton";
-import SplineComponent from "@/components/landing/SplineComponent";
-import { Spotlight } from "@/components/ui/spotlight-new";
+import { Footer } from "@/components/landing/Footer";
 import { HomeIcon, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 
+const About = lazy(() => import("@/components/landing/About").then((module) => ({ default: module.About })));
+const Spotlight = lazy(() => import("@/components/ui/spotlight-new").then((module) => ({ default: module.Spotlight })));
+const RubiksCubeScene = lazy(() => import("@/components/landing/RubiksCube"));
+
 export default function LandingPage() {
+  const [shouldRender3D, setShouldRender3D] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const aboutSectionRef = useRef(null);
+
   const navItems = [
     { name: "Home", link: "/", icon: <HomeIcon /> },
     { name: "About", link: "/about" },
     { name: "Chat", link: "/chat", icon: <MessageSquare /> },
   ];
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isMobile = window.innerWidth < 1024;
+    const saveData = navigator.connection?.saveData;
+
+    if (prefersReducedMotion || isMobile || saveData) {
+      return;
+    }
+
+    let timeoutId;
+    let idleCallbackId;
+
+    if ("requestIdleCallback" in window) {
+      idleCallbackId = window.requestIdleCallback(() => {
+        setShouldRender3D(true);
+      });
+    } else {
+      timeoutId = window.setTimeout(() => {
+        setShouldRender3D(true);
+      }, 700);
+    }
+
+    return () => {
+      if (idleCallbackId) {
+        window.cancelIdleCallback(idleCallbackId);
+      }
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const section = aboutSectionRef.current;
+    if (!section) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShowAbout(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "150px" }
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-black">
@@ -33,17 +92,29 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
-          <Spotlight />
-          <SplineComponent />
+          <Suspense fallback={null}>
+            <Spotlight />
+          </Suspense>
+          {shouldRender3D ? (
+            <Suspense
+              fallback={<div className="lg:w-[45%] h-[400px] lg:h-[800px] w-full bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg" />}
+            >
+              <RubiksCubeScene />
+            </Suspense>
+          ) : (
+            <div className="lg:w-[45%] h-[400px] lg:h-[800px] w-full bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg" />
+          )}
         </div>
       </main>
-      <div className="m-4 md:m-12 lg:m-24">
-        <About />
+      <div ref={aboutSectionRef} className="m-4 md:m-12 lg:m-24 min-h-[280px]">
+        {showAbout ? (
+          <Suspense fallback={<div className="h-24" />}>
+            <About />
+          </Suspense>
+        ) : null}
       </div>
 
-      <footer className="relative z-10 w-full py-12 text-center text-zinc-400">
-        <p>&copy; {new Date().getFullYear()} Advista. All rights reserved.</p>
-      </footer>
+      <Footer />
     </div>
   );
 }
