@@ -268,6 +268,52 @@ export default function ChatBot() {
     try {
       setIsLoading(true);
       const botId = Date.now() + 1;
+      const appendChunk = (chunk) => {
+        if (!chunk) return false;
+
+        let messageAdded = false;
+        setMessages((prev) => {
+          const existingIndex = prev.findIndex((m) => m.id === botId);
+
+          if (existingIndex === -1) {
+            messageAdded = true;
+            return [...prev, { id: botId, role: "bot", content: chunk }];
+          }
+
+          return prev.map((m) =>
+            m.id === botId ? { ...m, content: `${m.content || ""}${chunk}` } : m
+          );
+        });
+
+        return messageAdded;
+      };
+
+      const processSseBuffer = (rawBuffer, flush = false) => {
+        const normalizedBuffer = rawBuffer.replace(/\r\n/g, "\n");
+        const frames = normalizedBuffer.split("\n\n");
+        const remainder = flush ? "" : frames.pop() || "";
+        let receivedChunk = false;
+
+        for (const frame of frames) {
+          const dataLines = frame
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trim())
+            .filter(Boolean);
+
+          if (dataLines.length > 0) {
+            const chunk = dataLines.join("\n");
+            const addedFirstMessage = appendChunk(chunk);
+            receivedChunk = true;
+            if (addedFirstMessage) {
+              setIsLoading(false);
+            }
+          }
+        }
+
+        return { remainder, receivedChunk };
+      };
 
       const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/chat/stream`, {
         method: "POST",
@@ -296,32 +342,25 @@ export default function ChatBot() {
 
       while (true) {
         const { value, done } = await reader.read();
-        buffer += decoder.decode(value, { stream: true });
-        if (done) break;
-      }
+        if (value) {
+          buffer += decoder.decode(value, { stream: !done });
+        }
 
-      // Process SSE: frames separated by double newlines
-      const parts = buffer.split("\n\n");
-      for (const part of parts) {
-        const line = part.trim();
-        if (!line) continue;
-        const prefix = "data:";
-        if (line.startsWith(prefix)) {
-          const chunk = line.slice(prefix.length).trim();
-          if (chunk) {
-            if (!botMessageAdded) {
-              setMessages((prev) => [
-                ...prev,
-                { id: botId, role: "bot", content: chunk },
-              ]);
+        const processed = processSseBuffer(buffer, done);
+        buffer = processed.remainder;
+        if (processed.receivedChunk) {
+          botMessageAdded = true;
+        }
+
+        if (done) {
+          const trailing = decoder.decode();
+          if (trailing) {
+            const finalProcessed = processSseBuffer(buffer + trailing, true);
+            if (finalProcessed.receivedChunk) {
               botMessageAdded = true;
-              setIsLoading(false);
-            } else {
-              setMessages((prev) =>
-                prev.map((m) => (m.id === botId ? { ...m, content: (m.content || "") + chunk } : m))
-              );
             }
           }
+          break;
         }
       }
 
