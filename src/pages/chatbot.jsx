@@ -18,7 +18,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/use-auth";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 
 const starterPrompts = [
   "We help B2B SaaS teams monitor competitor pricing and positioning.",
@@ -131,13 +131,18 @@ export default function ChatBot() {
 
     // Only initialize thread once
     if (!tid) {
-      const res = await api.get("/api/v1/chat/initialize-thread");
-      if (!res?.data?.thread_id) {
+      const nextThreadId = await api
+        .get("/api/v1/chat/initialize-thread", {
+          timeout: 30000,
+        })
+        .then((res) => res?.data?.thread_id);
+
+      if (!nextThreadId) {
         setErrorMessage("Chat not initialized. Please refresh and try again.");
         setInput(message);
         return;
       }
-      tid = res.data.thread_id;
+      tid = nextThreadId;
       setThreadId(tid);
     }
 
@@ -145,7 +150,12 @@ export default function ChatBot() {
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
     }
-    await sendStreamingMessage(message, tid);
+    try {
+      await sendStreamingMessage(message, tid);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setErrorMessage("The chat service took too long to respond. Please try again.");
+    }
   };
  
 
@@ -457,7 +467,7 @@ export default function ChatBot() {
                   </div>
                 ) : null}
 
-                {messages.map((m, index) => (
+                {messages.map((m) => (
                   <div
                     key={m.id}
                     className={cn("flex gap-3", m.role === "user" ? "justify-end" : "justify-start")}
