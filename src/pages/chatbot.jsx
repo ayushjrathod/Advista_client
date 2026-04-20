@@ -18,7 +18,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/use-auth";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 const starterPrompts = [
   "We help B2B SaaS teams monitor competitor pricing and positioning.",
