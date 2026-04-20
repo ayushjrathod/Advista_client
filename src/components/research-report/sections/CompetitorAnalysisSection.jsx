@@ -9,8 +9,8 @@ export function CompetitorAnalysisSection({ competitorAnalysis }) {
   return (
     <div key="competitor" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-2xl font-bold text-white mb-2">Competitor Analysis</h2>
-        <p className="text-zinc-400">Landscape analysis and competitive advantages</p>
+        <h2 className="text-2xl font-bold text-white mb-2">Competitor Landscape</h2>
+        <p className="text-zinc-400">Landscape analysis and competitive positioning</p>
       </div>
 
       <Card className="bg-zinc-900/50 border-zinc-800">

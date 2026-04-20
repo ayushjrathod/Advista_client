@@ -2,17 +2,16 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import api from "@/lib/api";
 import { handleApiError } from "@/lib/auth-utils";
+import { auth, firebaseAuthEnabled, firebaseConfigError } from "@/lib/firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function ForgotPasswordForm() {
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
 
   const emailRef = useRef(null);
 
@@ -34,13 +33,14 @@ export default function ForgotPasswordForm() {
 
     setIsLoading(true);
     try {
-      await api.post("/api/v1/auth/forgot-password", {
-        email,
-      });
-      setUserEmail(email);
+      if (!firebaseAuthEnabled || !auth) {
+        throw new Error(firebaseConfigError);
+      }
+
+      await sendPasswordResetEmail(auth, email);
       setIsEmailSent(true);
     } catch (error) {
-      handleApiError(error, "Failed to send reset code. Please try again.", false);
+      handleApiError(error, "Failed to send reset email. Please try again.", false);
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +50,7 @@ export default function ForgotPasswordForm() {
     return (
       <AuthShell
         title="Check your email"
-        description="We've sent a password reset code to your email address."
+        description="We've sent a Firebase password reset link to your email address."
         footer={
           <p className="text-white">
             Remember your password?{" "}
@@ -63,15 +63,9 @@ export default function ForgotPasswordForm() {
         <div className="space-y-6">
           <div className="text-center">
             <p className="text-slate-300">
-              Please check your email and follow the instructions to reset your password.
+              Please check your email and follow the link to reset your password securely.
             </p>
           </div>
-          <Button
-            onClick={() => navigate(`/reset-password/${userEmail}`)}
-            className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-[0_25px_80px_-45px_rgba(59,130,246,0.95)] cursor-pointer"
-          >
-            Enter Reset Code
-          </Button>
         </div>
       </AuthShell>
     );
@@ -80,7 +74,7 @@ export default function ForgotPasswordForm() {
   return (
     <AuthShell
       title="Forgot your password?"
-      description="Enter your email address and we'll send you a code to reset your password."
+      description="Enter your email address and we'll send you a Firebase reset link."
       footer={
         <p className="text-white">
           Remember your password?{" "}
@@ -90,6 +84,11 @@ export default function ForgotPasswordForm() {
         </p>
       }
     >
+      {!firebaseAuthEnabled && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-left text-sm text-amber-100">
+          {firebaseConfigError}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-6" role="form" aria-label="Forgot password form">
         <div className="space-y-2 text-left">
           <Label htmlFor="email" className="text-sm font-semibold text-white">
@@ -112,15 +111,15 @@ export default function ForgotPasswordForm() {
         <Button
           className="w-full rounded-lg bg-primary/90 text-primary-foreground shadow-[0_25px_80px_-45px_rgba(59,130,246,0.95)] cursor-pointer"
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !firebaseAuthEnabled}
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Sending reset code
+              Sending reset email
             </span>
           ) : (
-            "Send reset code"
+            "Send reset email"
           )}
         </Button>
       </form>

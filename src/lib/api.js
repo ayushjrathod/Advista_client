@@ -1,5 +1,6 @@
 import axios from "axios";
 import { unwrapLambdaResponse } from "./lambdaResponse";
+import { getAuthToken } from "./firebase";
 
 // Get API URL from environment or use default
 const getApiUrl = () => {
@@ -13,7 +14,24 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // Enable credentials for CORS
+});
+
+api.interceptors.request.use(async (config) => {
+  let token = null;
+
+  try {
+    token = await getAuthToken();
+  } catch (error) {
+    console.warn("Skipping Firebase auth header:", error);
+  }
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  } else if (config.headers?.Authorization) {
+    delete config.headers.Authorization;
+  }
+
+  return config;
 });
 
 // Unwrap Lambda Function URL envelope so callers get response.data as the actual body

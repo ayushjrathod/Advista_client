@@ -5,9 +5,9 @@ const footerLinks = {
   Features: [
     { label: "Research Reports", href: "/chat" },
     { label: "Competitor Analysis", href: "/chat" },
-    { label: "Audience Insights", href: "/chat" },
-    { label: "Campaign Strategy", href: "/chat" },
-    { label: "Platform Strategy", href: "/chat" },
+    { label: "Customer Sentiment", href: "/chat" },
+    { label: "Strategic Recommendations", href: "/chat" },
+    { label: "Go-to-Market Strategy", href: "/chat" },
   ],
   Resources: [
     { label: "Documentation", href: "/documentation" },
@@ -36,42 +36,44 @@ const footerLinks = {
 
 const watermarkText = "Advista";
 const watermarkTop = "clamp(0px, 1vw, 18px)";
-const watermarkLineTop = "clamp(150px, 20vw, 318px)";
+const watermarkLineTop = "clamp(115px, 16.2vw, 270px)";
 const footerContentPaddingTop = "clamp(290px, 34vw, 500px)";
 const watermarkVisibleHeight = `calc(${watermarkLineTop} - ${watermarkTop})`;
 
 const watermarkTypography = {
-  fontFamily: '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  fontSize: "clamp(170px, 30vw, 420px)",
-  fontWeight: 800,
-  letterSpacing: "-0.01em",
+  fontFamily: '"Sora", "Inter", system-ui, -apple-system, sans-serif',
+  fontSize: "clamp(130px, 22vw, 360px)",
+  fontWeight: 900,
+  letterSpacing: "-0.02em",
   lineHeight: 0.86,
   textRendering: "geometricPrecision",
 };
 
 const watermarkHaloStyle = {
   color: "transparent",
-  WebkitTextStroke: "8px rgba(132, 126, 160, 0.018)",
-  filter: "blur(14px)",
-  opacity: 0.34,
-  transform: "translateY(6px)",
+  WebkitTextStroke: "6px rgba(132, 126, 160, 0.02)",
+  opacity: 0.3,
+  transform: "translateZ(0)",
 };
 
 const watermarkStrokeStyle = {
   color: "black",
-  WebkitTextStroke: "2px white",
+  WebkitTextStroke: "1.5px rgba(168, 130, 247, 0.4)",
   paintOrder: "stroke fill",
-  opacity: 0.15,
+  opacity: 0.2,
   mixBlendMode: "screen",
 };
 
 const watermarkFillStyle = {
   backgroundImage:
-    "linear-gradient(180deg, rgba(168, 85, 247, 0.3) 0%, rgba(139, 92, 246, 0.1) 40%, rgba(139, 92, 246, 0) 100%)",
+    "linear-gradient(105deg, rgba(168, 85, 247, 0.05) 0%, rgba(168, 85, 247, 0.35) 20%, rgba(236, 200, 255, 0.45) 30%, rgba(139, 92, 246, 0.35) 40%, rgba(139, 92, 246, 0.05) 60%, rgba(168, 85, 247, 0.05) 100%)",
+  backgroundSize: "200% 100%",
   WebkitBackgroundClip: "text",
   WebkitTextFillColor: "transparent",
   backgroundClip: "text",
   color: "transparent",
+  animation: "shimmer 6s ease-in-out infinite",
+  willChange: "background-position",
 };
 
 export function Footer() {

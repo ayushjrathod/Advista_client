@@ -77,11 +77,11 @@ export function YouTubeResource({ item, type = "video" }) {
 }
 
 const CATEGORY_LABELS = {
-  product: "Product",
-  competitor: "Competitor",
-  audience: "Audience",
-  campaign: "Campaign",
-  platform: "Platform",
+  company_product: "Company & Product",
+  competitor_landscape: "Competitor Landscape",
+  customer_sentiment: "Customer Sentiment",
+  strategic_gap: "Strategic Gaps",
+  battlecard: "Battlecard",
 };
 
 export function ResourcesTab({ resourcesUsed }) {

@@ -9,8 +9,8 @@ export function PlatformStrategySection({ platformStrategy }) {
   return (
     <div key="platform" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-2xl font-bold text-white mb-2">Platform Strategy</h2>
-        <p className="text-zinc-400">Channel selection and distribution strategy</p>
+        <h2 className="text-2xl font-bold text-white mb-2">Go-to-Market Strategy</h2>
+        <p className="text-zinc-400">Channel selection and competitive distribution strategy</p>
       </div>
 
       <Card className="bg-zinc-900/50 border-zinc-800">
@@ -20,10 +20,10 @@ export function PlatformStrategySection({ platformStrategy }) {
       </Card>
 
       <div>
-        <h3 className="text-lg font-semibold text-white mb-4">Platform Recommendations</h3>
-        {platformStrategy.platform_recommendations?.length > 0 ? (
+        <h3 className="text-lg font-semibold text-white mb-4">Channel Recommendations</h3>
+        {platformStrategy.channel_recommendations?.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {platformStrategy.platform_recommendations.map((p, i) => (
+            {platformStrategy.channel_recommendations.map((p, i) => (
               <PlatformCard key={i} platform={p} />
             ))}
           </div>
@@ -55,12 +55,12 @@ export function PlatformStrategySection({ platformStrategy }) {
         <div className="space-y-6">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-base">Ad Formats</CardTitle>
+              <CardTitle className="text-base">Content Formats</CardTitle>
             </CardHeader>
             <CardContent>
-              {platformStrategy.ad_format_suggestions?.length > 0 ? (
+              {platformStrategy.content_format_suggestions?.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {platformStrategy.ad_format_suggestions.map((f, i) => (
+                  {platformStrategy.content_format_suggestions.map((f, i) => (
                     <Tag key={i} variant="primary">
                       {f}
                     </Tag>

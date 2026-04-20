@@ -1,15 +1,58 @@
-import SmokeSceneComponent from "@/components/landing/SmokeScreenComponent";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Spotlight } from "@/components/ui/spotlight-new";
 import { cn } from "@/lib/utils";
-import { unwrapLambdaResponse } from "@/lib/lambdaResponse";
-import { Bot, Loader2, User } from "lucide-react";
+import api from "@/lib/api";
+import { buildAuthHeaders } from "@/lib/firebase";
+import {
+  Bot,
+  ChevronRight,
+  Loader2,
+  PanelRightClose,
+  PanelRightOpen,
+  SendHorizonal,
+  User,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/use-auth";
+import { AnimatePresence, motion } from "framer-motion";
+
+const starterPrompts = [
+  "We help B2B SaaS teams monitor competitor pricing and positioning.",
+  "I want a battlecard-ready view of competitors in the market.",
+  "Help me map customer pain points and whitespace opportunities.",
+];
+
+const briefFieldLabels = {
+  company_name: "Company",
+  product_description: "Product Description",
+  target_customers: "Target Customers",
+  strategic_goals: "Strategic Goals",
+  competitor_names: "Competitors",
+  primary_channels: "Primary Channels",
+  positioning_hypothesis: "Positioning",
+  additional_context: "Additional Context",
+};
+
+function BriefItem({ label, value }) {
+  if (!value || (Array.isArray(value) && value.length === 0)) {
+    return null;
+  }
+
+  return (
+    <div className="border-b border-white/6 py-3 last:border-b-0">
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500">{label}</p>
+      <p className="text-sm leading-6 text-zinc-100">{Array.isArray(value) ? value.join(", ") : value}</p>
+    </div>
+  );
+}
 
 export default function ChatBot() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { authMessage, isAuthenticated } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -18,20 +61,33 @@ export default function ChatBot() {
   const [researchBrief, setResearchBrief] = useState(null);
   const [showBriefPreview, setShowBriefPreview] = useState(false);
   const [isResearching, setIsResearching] = useState(false);
+  const [showAuthNotice, setShowAuthNotice] = useState(false);
+  const [showHeader, setShowHeader] = useState(true);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const initializationDone = useRef(false);
+  const hasInteracted = useRef(false);
 
   const scrollToBottom = () => {
+    if (!hasInteracted.current) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(scrollToBottom, [messages]);
 
-  // Refocus input field after sending a message
   useEffect(() => {
-    if (inputRef.current && !isLoading) {
+    if (!isAuthenticated && authMessage) {
+      setShowAuthNotice(true);
+      return;
+    }
+
+    setShowAuthNotice(false);
+  }, [authMessage, isAuthenticated]);
+
+  // Refocus input field after sending a message (skip on initial load)
+  useEffect(() => {
+    if (hasInteracted.current && inputRef.current && !isLoading) {
       inputRef.current.focus();
     }
   }, [messages.length, isLoading]);
@@ -50,7 +106,7 @@ export default function ChatBot() {
             id: Date.now(),
             role: "bot",
             content:
-              "Hi! I'm Advista Research Assistant. I'll ask you a few quick questions to create your advertising research brief. What product or service would you like to advertise?",
+              "Hi! I'm your Competitive Intelligence assistant. Tell me about your company and what you want to understand about your competitive landscape — who you are, who you compete with, and what you're trying to learn.",
           },
         ]);
       } catch (error) {
@@ -65,27 +121,24 @@ export default function ChatBot() {
   }, []);
 
   const sendUserMessage = async (message) => {
+    hasInteracted.current = true;
+    setShowHeader(false);
     // Add user message
     setMessages((prev) => [...prev, { id: Date.now(), role: "user", content: message }]);
     setInput("");
 
-    const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/chat/initialize-thread`, {
-      credentials: "include",
-    });
-    if (!res.ok) {
-      setErrorMessage("Chat not initialized. Please refresh and try again.");
-      setInput(message);
-      return;
-    }
-    const data = await res.json();
-    const payload = unwrapLambdaResponse(data);
-    const tid = payload?.thread_id;
-    setThreadId(tid);
+    let tid = threadId;
 
+    // Only initialize thread once
     if (!tid) {
-      setErrorMessage("Chat not initialized. Please refresh and try again.");
-      setInput(message);
-      return;
+      const res = await api.get("/api/v1/chat/initialize-thread");
+      if (!res?.data?.thread_id) {
+        setErrorMessage("Chat not initialized. Please refresh and try again.");
+        setInput(message);
+        return;
+      }
+      tid = res.data.thread_id;
+      setThreadId(tid);
     }
 
     //reset textarea height
@@ -101,15 +154,14 @@ export default function ChatBot() {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/chat/research-brief/${tid}`,
         {
-          credentials: "include",
+          headers: await buildAuthHeaders(),
         }
       );
       if (res.ok) {
         const data = await res.json();
-        const payload = unwrapLambdaResponse(data);
-        setResearchBrief(payload);
+        setResearchBrief(data);
         // Show preview if brief has any progress at all
-        if (payload?.is_complete || (payload?.completion_percentage ?? 0) > 0) {
+        if (data?.is_complete || (data?.completion_percentage ?? 0) > 0) {
           setShowBriefPreview(true);
         }
       }
@@ -131,35 +183,15 @@ export default function ChatBot() {
         {
           id: Date.now(),
           role: "bot",
-          content: "🔍 Starting research... I'm gathering market data and analyzing your product.",
+          content: "🔍 Starting research... I'm gathering competitive intelligence data and analyzing your market.",
         },
       ]);
 
-      const searchRes = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/research/start-research`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({ 
-            research_brief: researchBrief.brief,
-            threadId: threadId,
-            ...(user?.id ? { userId: user.id } : {})
-          }),
-        }
-      );
-
-      if (!searchRes.ok) {
-        const rawError = await searchRes.json().catch(() => ({}));
-        const errorData = unwrapLambdaResponse(rawError);
-        throw new Error(errorData?.detail || "Failed to start research");
-      }
-
-      // Parse JSON response (unwrap Lambda envelope if present)
-      const rawData = await searchRes.json();
-      const data = unwrapLambdaResponse(rawData);
+      const searchRes = await api.post("/api/v1/research/start-research", {
+        research_brief: researchBrief.brief,
+        threadId,
+      }, { timeout: 300000 });
+      const data = searchRes.data;
 
       // Update progress
       setMessages((prev) => [
@@ -229,17 +261,16 @@ export default function ChatBot() {
 
       const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/v1/chat/stream`, {
         method: "POST",
-        headers: {
+        headers: await buildAuthHeaders({
           "Content-Type": "application/json",
-            Accept: "text/event-stream",
-        },
-        credentials: "include", // Include cookies
+          Accept: "text/event-stream",
+        }),
         body: JSON.stringify({ thread_id: tid, message }),
       });
 
       if (!res.ok) {
         if (res.status === 401) {
-          throw new Error("Authentication required. Please sign in to continue chatting.");
+          throw new Error("You are not authenticated right now, but you can still continue since this is a personal project.");
         }
         throw new Error(`Streaming request failed with status ${res.status}`);
       }
@@ -257,18 +288,6 @@ export default function ChatBot() {
         const { value, done } = await reader.read();
         buffer += decoder.decode(value, { stream: true });
         if (done) break;
-      }
-
-      // Unwrap Lambda envelope if present (body may contain the SSE stream)
-      if (buffer.trim().startsWith("{")) {
-        try {
-          const parsed = JSON.parse(buffer);
-          if (parsed != null && typeof parsed === "object" && "body" in parsed && typeof parsed.body === "string") {
-            buffer = parsed.body;
-          }
-        } catch {
-          // not envelope, use buffer as-is for SSE
-        }
       }
 
       // Process SSE: frames separated by double newlines
@@ -326,233 +345,303 @@ export default function ChatBot() {
     await sendUserMessage(input);
   };
 
+  const handleStarterPrompt = async (prompt) => {
+    if (isLoading) return;
+    await sendUserMessage(prompt);
+  };
+
+  const hasAuthNotice = !isAuthenticated && authMessage && showAuthNotice;
+  const authNoticeMessage = hasAuthNotice
+    ? "You're not signed in, but you can still use the chatbot. Consider it as a trial"
+    : "";
+  const briefCompletion = Math.round(researchBrief?.completion_percentage ?? 0);
+  const briefEntries = researchBrief?.brief
+    ? Object.entries(researchBrief.brief).filter(([, value]) => {
+        if (Array.isArray(value)) return value.length > 0;
+        return Boolean(value);
+      })
+    : [];
+  const canGenerateReport = Boolean(researchBrief && (researchBrief.is_complete || researchBrief.completion_percentage >= 70));
+
   return (
-    <div className="flex flex-col h-screen bg-black text-white">
-      <SmokeSceneComponent />
-
-      {/* Toggle Button when brief is hidden */}
-      {!showBriefPreview && researchBrief && (
-        <button
-          onClick={() => setShowBriefPreview(true)}
-          className="fixed top-4 right-4 z-50 bg-gradient-to-br from-violet-900/60 to-zinc-800/50 backdrop-blur-sm text-white font-medium py-2 px-4 rounded-lg transition-colors shadow-lg flex items-center gap-2 cursor-pointer"
-        >
-          📋 Show Brief ({Math.round(researchBrief.completion_percentage)}%)
-        </button>
-      )}
-
-      {/* Fixed Floating Research Brief Summary */}
-      {showBriefPreview && researchBrief && (
-        <div className="fixed top-4 right-4 z-50 w-96 max-h-[80vh] overflow-y-auto">
-          <div className="border border-violet-600/50 bg-gradient-to-br from-violet-950/10 to-zinc-900/10 backdrop-blur-md rounded-2xl p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-violet-400">📋 Research Brief</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-400">{Math.round(researchBrief.completion_percentage)}%</span>
-                <button
-                  onClick={() => setShowBriefPreview(false)}
-                  className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  title="Hide preview"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              {researchBrief.brief.product_name && (
-                <div>
-                  <span className="text-zinc-400 text-xs">Product:</span>
-                  <p className="text-white">{researchBrief.brief.product_name}</p>
-                </div>
-              )}
-              {researchBrief.brief.product_description && (
-                <div>
-                  <span className="text-zinc-400 text-xs">Description:</span>
-                  <p className="text-white">{researchBrief.brief.product_description}</p>
-                </div>
-              )}
-              {researchBrief.brief.target_audience && (
-                <div>
-                  <span className="text-zinc-400 text-xs">Target Audience:</span>
-                  <p className="text-white">{researchBrief.brief.target_audience}</p>
-                </div>
-              )}
-              {researchBrief.brief.campaign_goals && (
-                <div>
-                  <span className="text-zinc-400 text-xs">Goals:</span>
-                  <p className="text-white">{researchBrief.brief.campaign_goals}</p>
-                </div>
-              )}
-              {researchBrief.brief.competitor_names?.length > 0 && (
-                <div>
-                  <span className="text-zinc-400 text-xs">Competitors:</span>
-                  <p className="text-white">{researchBrief.brief.competitor_names.join(", ")}</p>
-                </div>
-              )}
-              {researchBrief.brief.budget_range && (
-                <div>
-                  <span className="text-zinc-400 text-xs">Budget:</span>
-                  <p className="text-white">{researchBrief.brief.budget_range}</p>
-                </div>
-              )}
-              {researchBrief.brief.preferred_platforms?.length > 0 && (
-                <div>
-                  <span className="text-zinc-400 text-xs">Platforms:</span>
-                  <p className="text-white">{researchBrief.brief.preferred_platforms.join(", ")}</p>
-                </div>
-              )}
-              {researchBrief.brief.tone_and_style && (
-                <div>
-                  <span className="text-zinc-400 text-xs">Tone & Style:</span>
-                  <p className="text-white">{researchBrief.brief.tone_and_style}</p>
-                </div>
-              )}
-              {researchBrief.brief.timeline && (
-                <div>
-                  <span className="text-zinc-400 text-xs">Timeline:</span>
-                  <p className="text-white">{researchBrief.brief.timeline}</p>
-                </div>
-              )}
-            </div>
-
-            {(researchBrief.is_complete || researchBrief.completion_percentage >= 70) && (
-              <div className="mt-4 flex flex-col gap-2">
-                <button
-                  onClick={handleConfirmBrief}
-                  disabled={isResearching}
-                  className="w-full bg-gradient-to-br from-violet-950/35 to-zinc-900/35 text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isResearching ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Researching...
-                    </>
-                  ) : (
-                    "✓ Confirm & Start Research"
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
+    <div className="relative min-h-dvh overflow-x-hidden overflow-y-auto bg-[#08090A] text-white">
+      {hasAuthNotice ? (
+        <div className="fixed top-4 right-4 z-50 flex items-start gap-3 rounded-xl border border-white/10 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 shadow-lg backdrop-blur-md">
+          <p className="leading-6">{authNoticeMessage}</p>
+          <button
+            type="button"
+            onClick={() => setShowAuthNotice(false)}
+            className="mt-0.5 shrink-0 text-zinc-400 transition-colors hover:text-white"
+            aria-label="Dismiss notice"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      )}
+      ) : null}
+      <Spotlight />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.16),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.10),transparent_26%)]" />
 
-      <ScrollArea className="z-10 h-screen flex-1 px-4 py-6 overflow-y-auto">
-        <div className="max-w-4xl bg-gradient-to-r p-2 rounded-xl mx-auto space-y-4">
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={cn("flex items-start space-x-2 mb-4", m.role === "user" ? "justify-end" : "justify-start")}
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1440px] flex-col box-border px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-6 lg:px-8 lg:pt-[max(1rem,env(safe-area-inset-top))] lg:pb-4">
+        <AnimatePresence>
+          {showHeader ? (
+            <motion.div
+              key="header"
+              initial={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0, paddingBottom: 0 }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              className="mb-4 overflow-hidden border-b border-white/8 pb-4"
             >
-              {m.role !== "user" && (
-                <div className="w-8 h-8 rounded-full border border-zinc-700/30 text-white flex items-center justify-center">
-                  <Bot size={16} />
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-500">
+                    <span className="text-violet-200">Advista Copilot</span>
+                    <span className="text-zinc-700">•</span>
+                    <span>Competitive Intelligence</span>
+                  </div>
+                  <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">Build your research brief</h1>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-[15px]">
+                    Describe your company, competitors, customer pains, and strategic goals. The brief updates automatically as you chat.
+                  </p>
                 </div>
-              )}
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2 border backdrop-blur-sm",
-                  m.role === "user"
-                    ? "border-zinc-700/20 bg-gradient-to-br from-zinc-900/90 to-zinc-800/70"
-                    : "border-zinc-800/20 bg-gradient-to-br from-zinc-950/90 to-zinc-900/70"
-                )}
-              >
-                <p className="text-base leading-relaxed whitespace-pre-wrap">{m.content}</p>
-              </div>
-              {m.role === "user" && (
-                <div className="w-8 h-8 rounded-full border border-zinc-700/30 text-white flex items-center justify-center">
-                  <User size={16} />
-                </div>
-              )}
-            </div>
-          ))}
 
-          {isLoading && (
-            <div className="flex items-start space-x-2 mb-4 justify-start">
-              <div className="w-8 h-8 rounded-full border border-zinc-700/30 text-white flex items-center justify-center">
-                <Bot size={16} />
+                <div className="flex items-center gap-3 text-sm text-zinc-400">
+                  <span>{messages.length} messages</span>
+                  <span className="text-zinc-700">•</span>
+                  <span>{briefCompletion}% brief complete</span>
+                </div>
               </div>
-              <div className="max-w-[80%] rounded-2xl px-4 py-2 border backdrop-blur-sm border-zinc-800/20 bg-gradient-to-br from-zinc-950/90 to-zinc-900/70">
-                <div className="flex items-center space-x-2">
-                  <p className="text-zinc-400">Bot is typing…</p>
-                  <div className="flex space-x-1">
-                    <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.2s]"></span>
-                    <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.1s]"></span>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <div className="grid flex-1 gap-4 lg:grid-cols-[minmax(0,1.45fr)_380px] xl:grid-cols-[minmax(0,1.65fr)_400px]">
+          <Card className="flex min-h-[calc(100dvh-11rem)] flex-col border-white/8 bg-white/[0.02] py-0 backdrop-blur-xl">
+            <CardContent className="flex items-center justify-between gap-4 border-b border-white/6 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">Conversation</p>
+                <h2 className="mt-1 text-lg font-semibold text-white">Research intake chat</h2>
+              </div>
+              {researchBrief ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowBriefPreview((prev) => !prev)}
+                  className="border-white/10 bg-transparent text-white hover:bg-white/[0.04]"
+                >
+                  {showBriefPreview ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                  {showBriefPreview ? "Hide brief" : "Show brief"}
+                </Button>
+              ) : null}
+            </CardContent>
+
+            <ScrollArea className="flex-1 px-4 py-4 sm:px-6 sm:py-5">
+              <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 pb-4">
+                {messages.length <= 1 ? (
+                  <div className="pb-2">
+                    <p className="mb-3 text-sm text-zinc-400">Try one of these to get started:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {starterPrompts.map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => handleStarterPrompt(prompt)}
+                          className="rounded-full border border-white/10 px-4 py-2 text-left text-sm text-zinc-300 transition hover:border-violet-400/30 hover:text-white"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>{prompt}</span>
+                            <ChevronRight className="h-4 w-4 shrink-0 text-zinc-600" />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {messages.map((m, index) => (
+                  <div
+                    key={m.id}
+                    className={cn("flex gap-3", m.role === "user" ? "justify-end" : "justify-start")}
+                  >
+                    {m.role !== "user" ? (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10 text-violet-100 shadow-[0_0_30px_rgba(139,92,246,0.15)]">
+                        <Bot className="h-4 w-4" />
+                      </div>
+                    ) : null}
+
+                    <div
+                      className={cn(
+                        "max-w-[88%] rounded-[24px] border px-4 py-3 sm:max-w-[78%] sm:px-5 sm:py-4",
+                        m.role === "user"
+                          ? "border-white/10 bg-black text-white"
+                          : "border-white/8 bg-white/[0.03] text-zinc-100"
+                      )}
+                    >
+                      <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-400">
+                        <span className={cn("inline-flex items-center gap-1", m.role === "user" ? "text-violet-100/90" : "text-zinc-400")}>{m.role === "user" ? "You" : "Advista AI"}</span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-[15px] leading-7">{m.content}</p>
+                    </div>
+
+                    {m.role === "user" ? (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white">
+                        <User className="h-4 w-4" />
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+
+                {isLoading ? (
+                  <div className="flex gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10 text-violet-100">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                    <div className="rounded-[24px] border border-white/8 bg-white/[0.03] px-5 py-4">
+                      <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-400">
+                        <span>Advista AI</span>
+                        <span className="text-zinc-600">•</span>
+                        <span>Thinking</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-zinc-300">
+                        <Loader2 className="h-4 w-4 animate-spin text-violet-300" />
+                        <span>Analyzing your input and updating the brief…</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {errorMessage ? (
+                  <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {errorMessage}
+                  </div>
+                ) : null}
+
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+            <div className="border-t border-white/6 px-4 py-4 sm:px-6 sm:py-5">
+              <form onSubmit={onSubmit} className="mx-auto flex w-full max-w-4xl flex-col gap-3">
+                <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-transparent">
+                  <textarea
+                    ref={inputRef}
+                    className="min-h-[72px] w-full resize-none bg-transparent px-5 py-4 pr-16 text-[15px] leading-7 text-zinc-100 outline-none placeholder:text-zinc-500"
+                    value={input}
+                    onChange={handleInputChange}
+                    placeholder="Describe your company, market, competitors, or the strategic questions you want answered..."
+                    disabled={isLoading}
+                    aria-label="Type your message"
+                    rows={1}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        onSubmit(e);
+                      }
+                    }}
+                  />
+                  <div className="absolute bottom-3 right-3">
+                    <Button
+                      type="submit"
+                      size="icon"
+                      className="h-11 w-11 rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-950/40 hover:bg-violet-500"
+                      disabled={isLoading || !input.trim()}
+                      aria-label="Send message"
+                    >
+                      <SendHorizonal className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              </div>
+
+                <div className="flex flex-col gap-2 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+                  <p>Press Enter to send, Shift + Enter for a new line.</p>
+                  <p>The brief updates automatically as you chat.</p>
+                </div>
+              </form>
             </div>
-          )}
+          </Card>
 
-          {errorMessage && <div className="text-red-500 text-center mt-4">{errorMessage}</div>}
+          <aside className={cn("flex flex-col gap-4", !researchBrief && "lg:opacity-100", researchBrief && !showBriefPreview && "hidden lg:flex") }>
+            <Card className="border-white/8 bg-white/[0.02] py-0 backdrop-blur-xl lg:sticky lg:top-6">
+              <CardContent className="px-5 py-5 sm:px-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">Live brief</p>
+                    <h2 className="mt-1 text-lg font-semibold text-white">Research brief preview</h2>
+                  </div>
+                  {researchBrief ? (
+                    <div className="px-3 py-1 text-xs font-medium text-zinc-400">
+                      {briefCompletion}%
+                    </div>
+                  ) : null}
+                </div>
 
-          <div ref={messagesEndRef} />
+                {researchBrief ? (
+                  <>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/6">
+                      <div
+                        className="h-full rounded-full bg-white transition-all"
+                        style={{ width: `${briefCompletion}%` }}
+                      />
+                    </div>
+
+                    <p className="mt-3 text-sm leading-6 text-zinc-400">
+                      {canGenerateReport
+                        ? "You have enough detail to generate a report now, or keep adding context for a stronger output."
+                        : "Keep chatting to fill in competitors, target customers, channels, and strategic goals."}
+                    </p>
+
+                    <div className="mt-5">
+                      {briefEntries.length > 0 ? (
+                        briefEntries.map(([key, value]) => (
+                          <BriefItem key={key} label={briefFieldLabels[key] || key} value={value} />
+                        ))
+                      ) : (
+                        <div className="py-3 text-sm leading-6 text-zinc-500">
+                          No brief fields captured yet. Start the conversation and this panel will fill in automatically.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-5 flex flex-col gap-3">
+                      <Button
+                        onClick={handleConfirmBrief}
+                        disabled={isResearching || !canGenerateReport}
+                        className="h-11 rounded-2xl bg-black text-white hover:bg-zinc-900"
+                      >
+                        {isResearching ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Generating CI report...
+                          </>
+                        ) : (
+                          <>
+                            Generate CI Report
+                          </>
+                        )}
+                      </Button>
+
+                      {!showBriefPreview ? null : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setShowBriefPreview(false)}
+                          className="text-zinc-400 hover:bg-white/[0.04] hover:text-white lg:hidden"
+                        >
+                          <PanelRightClose className="h-4 w-4" />
+                          Hide brief
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-4 text-sm leading-6 text-zinc-500">
+                    This panel stays updated with the brief as the assistant extracts key company, market, and competitor context.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </aside>
         </div>
-      </ScrollArea>
-
-      <div className="z-10 w-full">
-        <form onSubmit={onSubmit} className="max-w-2xl mx-auto p-4 w-full">
-          <div className="relative rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-xl">
-            <textarea
-              ref={inputRef}
-              className="input bg-transparent outline-none border-none pl-4 pr-12 py-3 w-full font-sans text-md text-zinc-100 placeholder-zinc-400 resize-none min-h-[48px] max-h-[120px]"
-              value={input}
-              onChange={handleInputChange}
-              placeholder="Type a message..."
-              disabled={isLoading}
-              aria-label="Type your message"
-              rows={1}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  onSubmit(e);
-                }
-              }}
-            />
-            <div className="absolute right-1 bottom-1">
-              <button
-                type="submit"
-                className="w-10 h-10 rounded-full bg-violet-600 hover:bg-violet-500 group shadow-xl flex items-center justify-center relative overflow-hidden"
-                disabled={isLoading || !input.trim()}
-                aria-label="Send message"
-              >
-                <svg
-                  className="relative z-10"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 64 64"
-                  height="35"
-                  width="35"
-                >
-                  <path
-                    fillOpacity="0.01"
-                    fill="white"
-                    d="M63.6689 29.0491L34.6198 63.6685L0.00043872 34.6194L29.0496 1.67708e-05L63.6689 29.0491Z"
-                  ></path>
-                  <path
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    strokeWidth="3.76603"
-                    stroke="white"
-                    d="M42.8496 18.7067L21.0628 44.6712"
-                  ></path>
-                  <path
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    strokeWidth="3.76603"
-                    stroke="white"
-                    d="M26.9329 20.0992L42.85 18.7067L44.2426 34.6238"
-                  ></path>
-                </svg>
-                <div className="w-full h-full rotate-45 absolute left-[32%] top-[32%] bg-black group-hover:-left-[100%] group-hover:-top-[100%] duration-500"></div>
-                <div className="w-full h-full -rotate-45 absolute -left-[32%] -top-[32%] group-hover:left-[100%] group-hover:top-[100%] bg-black duration-500"></div>
-              </button>
-            </div>
-          </div>
-        </form>
       </div>
-      {/*backGroundBeams*/}
     </div>
   );
 }

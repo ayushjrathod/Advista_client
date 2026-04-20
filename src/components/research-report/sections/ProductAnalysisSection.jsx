@@ -8,8 +8,8 @@ export function ProductAnalysisSection({ productAnalysis }) {
   return (
     <div key="product" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-2xl font-bold text-white mb-2">Product Analysis</h2>
-        <p className="text-zinc-400">Deep dive into product features and market fit</p>
+        <h2 className="text-2xl font-bold text-white mb-2">Company & Product</h2>
+        <p className="text-zinc-400">Deep dive into product capabilities and market position</p>
       </div>
 
       <Card className="bg-zinc-900/50 border-zinc-800">
@@ -65,19 +65,19 @@ export function ProductAnalysisSection({ productAnalysis }) {
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-base">Key Features</CardTitle>
+            <CardTitle className="text-base">Key Capabilities</CardTitle>
           </CardHeader>
           <CardContent>
-            {productAnalysis.key_features?.length > 0 ? (
+            {productAnalysis.key_capabilities?.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {productAnalysis.key_features.map((f, i) => (
+                {productAnalysis.key_capabilities.map((f, i) => (
                   <Tag key={i} variant="primary">
                     {f}
                   </Tag>
                 ))}
               </div>
             ) : (
-              <p className="text-zinc-500 text-sm">No key features listed.</p>
+              <p className="text-zinc-500 text-sm">No key capabilities listed.</p>
             )}
           </CardContent>
         </Card>

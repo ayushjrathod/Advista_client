@@ -52,7 +52,7 @@ export function PlatformCard({ platform }) {
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-medium text-white">{platform.platform}</CardTitle>
+          <CardTitle className="text-base font-medium text-white">{platform.channel}</CardTitle>
           <span
             className={`px-2 py-0.5 rounded text-[10px] uppercase font-semibold border ${priorityColors[platform.priority] || priorityColors.medium}`}
           >
@@ -66,7 +66,7 @@ export function PlatformCard({ platform }) {
           <div className="p-1.5 rounded bg-zinc-800/50">
             <DollarSign className="w-3.5 h-3.5 text-zinc-400" />
           </div>
-          <span className="text-sm font-medium text-zinc-300">{platform.budget_percentage}% Budget Allocation</span>
+          <span className="text-sm font-medium text-zinc-300">{platform.effort_percentage}% Effort Allocation</span>
         </div>
       </CardContent>
     </Card>

@@ -3,12 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordStrengthIndicator } from "@/components/ui/password-strength-indicator";
+import { useAuth } from "@/contexts/use-auth";
 import api from "@/lib/api";
 import { handleApiError } from "@/lib/auth-utils";
+import { auth, firebaseAuthEnabled, firebaseConfigError } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 import { emailValidation, signUpSchema } from "@/schemas/signUpSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDebounce } from "@uidotdev/usehooks";
+import { createUserWithEmailAndPassword, EmailAuthProvider, linkWithCredential, sendEmailVerification } from "firebase/auth";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -21,6 +24,7 @@ export default function SignUpForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [password, setPassword] = useState("");
   const debouncedEmail = useDebounce(email, 300);
+  const { checkAuth } = useAuth();
 
   const navigate = useNavigate();
   const emailInputRef = useRef(null);
@@ -77,9 +81,25 @@ export default function SignUpForm() {
     setIsSubmitting(true);
 
     try {
-      await api.post("/api/v1/auth/signup", data);
+      if (!firebaseAuthEnabled || !auth) {
+        throw new Error(firebaseConfigError);
+      }
 
-      navigate(`/verify/${email}`);
+      let firebaseUser;
+
+      if (auth.currentUser?.isAnonymous) {
+        const credential = EmailAuthProvider.credential(data.email, data.password);
+        const linkedUser = await linkWithCredential(auth.currentUser, credential);
+        firebaseUser = linkedUser.user;
+      } else {
+        const createdUser = await createUserWithEmailAndPassword(auth, data.email, data.password);
+        firebaseUser = createdUser.user;
+      }
+
+      await sendEmailVerification(firebaseUser);
+      await checkAuth();
+
+      navigate("/chat");
     } catch (error) {
       handleApiError(error, "There was a problem with your sign-up. Please try again.", false);
     } finally {
@@ -101,6 +121,11 @@ export default function SignUpForm() {
         </p>
       }
     >
+      {!firebaseAuthEnabled && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-left text-sm text-amber-100">
+          {firebaseConfigError}
+        </div>
+      )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" role="form" aria-label="Sign up form">
           <FormField
@@ -192,7 +217,7 @@ export default function SignUpForm() {
           <Button
             type="submit"
             className="w-full rounded-lg bg-primary/90 text-primary-foreground shadow-[0_25px_80px_-45px_rgba(59,130,246,0.95)] cursor-pointer"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !firebaseAuthEnabled}
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">

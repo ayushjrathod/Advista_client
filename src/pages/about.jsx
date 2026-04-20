@@ -1,12 +1,12 @@
 import { FloatingNav } from "@/components/landing/floating-navbar";
-import { ArrowLeft, HomeIcon, MessageSquare } from "lucide-react";
+import { Footer } from "@/components/landing/Footer";
+import { ArrowLeft, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function AboutPage() {
   const navItems = [
-    { name: "Home", link: "/", icon: <HomeIcon /> },
+    { name: "Start Run", link: "/chat", icon: <MessageSquare /> },
     { name: "About", link: "/about" },
-    { name: "Chat", link: "/chat", icon: <MessageSquare /> },
   ];
 
   return (
@@ -76,14 +76,14 @@ export default function AboutPage() {
               <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800 hover:border-zinc-700 transition-colors">
                 <h3 className="text-xl font-semibold text-white mb-4">Competitive Intelligence</h3>
                 <p className="text-zinc-400">
-                  Stay ahead of competitors by analyzing their strategies, ads, and audience sentiments in real-time.
+                  Stay ahead of competitors by analyzing their strategies, positioning, and customer sentiments in real-time.
                 </p>
               </div>
 
               <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800 hover:border-zinc-700 transition-colors">
                 <h3 className="text-xl font-semibold text-white mb-4">Smart Recommendations</h3>
                 <p className="text-zinc-400">
-                  Get tailored recommendations for high-performing hooks, CTAs, and content formats based on competitor
+                  Get tailored strategic recommendations and go-to-market guidance based on competitive landscape
                   analysis.
                 </p>
               </div>
@@ -137,9 +137,7 @@ export default function AboutPage() {
         </div>
       </main>
 
-      <footer className="relative z-10 w-full py-12 text-center text-zinc-400">
-        <p>&copy; {new Date().getFullYear()} Advista. All rights reserved.</p>
-      </footer>
+      <Footer />
     </div>
   );
 }
