@@ -335,33 +335,43 @@ export default function ChatBot() {
         throw new Error("No response body received");
       }
 
+      // Read the full response body first
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = "";
-      let botMessageAdded = false;
+      let rawBody = "";
 
       while (true) {
         const { value, done } = await reader.read();
         if (value) {
-          buffer += decoder.decode(value, { stream: !done });
+          rawBody += decoder.decode(value, { stream: !done });
         }
-
-        const processed = processSseBuffer(buffer, done);
-        buffer = processed.remainder;
-        if (processed.receivedChunk) {
-          botMessageAdded = true;
-        }
-
         if (done) {
-          const trailing = decoder.decode();
-          if (trailing) {
-            const finalProcessed = processSseBuffer(buffer + trailing, true);
-            if (finalProcessed.receivedChunk) {
-              botMessageAdded = true;
-            }
-          }
+          rawBody += decoder.decode(); // flush
           break;
         }
+      }
+
+      // Handle Lambda envelope: Mangum wraps StreamingResponse in
+      // {"statusCode":200,"body":"data: ...\n\n...","headers":{...}}
+      let sseText = rawBody;
+      try {
+        const envelope = JSON.parse(rawBody);
+        if (envelope && typeof envelope === "object" && "body" in envelope && "statusCode" in envelope) {
+          if (envelope.statusCode >= 400) {
+            throw new Error(`Server error ${envelope.statusCode}: ${envelope.body}`);
+          }
+          sseText = typeof envelope.body === "string" ? envelope.body : JSON.stringify(envelope.body);
+        }
+      } catch (e) {
+        // Not JSON — treat rawBody as direct SSE text (local dev)
+        if (e.message?.startsWith("Server error")) throw e;
+      }
+
+      // Parse SSE frames from the (possibly unwrapped) text
+      let botMessageAdded = false;
+      const { receivedChunk } = processSseBuffer(sseText, true);
+      if (receivedChunk) {
+        botMessageAdded = true;
       }
 
       // If no content was received, ensure loading is stopped
