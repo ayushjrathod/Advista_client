@@ -1,63 +1,62 @@
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import api from "@/lib/api";
+import { useAuth } from "@/contexts/use-auth";
 import { handleApiError } from "@/lib/auth-utils";
-import { verifyCodeSchema } from "@/schemas/verifySchema";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { auth, firebaseAuthEnabled, firebaseConfigError } from "@/lib/firebase";
+import { sendEmailVerification } from "firebase/auth";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 export default function VerifyAccount() {
   const navigate = useNavigate();
   const params = useParams();
   const [isResending, setIsResending] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const { checkAuth, user } = useAuth();
 
-  const form = useForm({
-    resolver: zodResolver(verifyCodeSchema),
-    defaultValues: {
-      verify_code: "",
-    },
-  });
-
-  const verifyCodeRef = useRef(null);
-
-  // Auto-focus first input on mount
-  useEffect(() => {
-    if (verifyCodeRef.current) {
-      verifyCodeRef.current.focus();
-    }
-  }, []);
-
-  const onSubmit = async (data) => {
-    // Ensure verification code is exactly 6 digits
-    if (!data.verify_code || data.verify_code.length !== 6) {
-      alert("Please enter a 6-digit verification code");
+  const handleVerificationRefresh = async () => {
+    if (!firebaseAuthEnabled || !auth) {
+      handleApiError(new Error(firebaseConfigError), firebaseConfigError, true);
       return;
     }
 
-    try {
-      await api.post("/api/v1/auth/verify-email", {
-        email: params.email,
-        verify_code: data.verify_code,
-      });
+    if (!auth.currentUser) {
+      navigate("/chat", { replace: true });
+      return;
+    }
 
-      navigate("/sign-in", { replace: true });
+    setIsChecking(true);
+    try {
+      await auth.currentUser.reload();
+      await checkAuth();
+
+      if (auth.currentUser.emailVerified || user?.is_verified) {
+        navigate("/chat", { replace: true });
+        return;
+      }
+
+      handleApiError(new Error("Email is not verified yet. You can keep using the app and verify later."), undefined, true);
     } catch (error) {
-      handleApiError(error, "Verification failed. Please try again.", false);
+      handleApiError(error, "Verification check failed. Please try again.", false);
+    } finally {
+      setIsChecking(false);
     }
   };
 
   const handleResendCode = async () => {
     setIsResending(true);
     try {
-      await api.post("/api/v1/auth/resend-verification", {
-        email: params.email,
-      });
+      if (!firebaseAuthEnabled || !auth) {
+        throw new Error(firebaseConfigError);
+      }
+
+      if (!auth.currentUser) {
+        throw new Error("Please sign in again to resend the verification email.");
+      }
+
+      await sendEmailVerification(auth.currentUser);
     } catch (error) {
-      handleApiError(error, "Failed to resend verification code. Please try again.", false);
+      handleApiError(error, "Failed to resend verification email. Please try again.", false);
     } finally {
       setIsResending(false);
     }
@@ -66,68 +65,50 @@ export default function VerifyAccount() {
   return (
     <AuthShell
       title="Verify your account"
-      description="Enter the six-digit code we emailed you to activate your Advista account."
+      description={`We sent a verification link to ${params.email}. Verify whenever convenient—your workflow is not blocked.`}
       footer={
         <p className="text-white">
-          Didn’t receive an email? Check your spam folder or{" "}
-          <Link to="/sign-in" className="font-semibold text-white">
-            return to sign in
+          Want to skip this for now?{" "}
+          <Link to="/chat" className="font-semibold text-white">
+            continue to chat
           </Link>
           .
         </p>
       }
     >
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-6"
-          role="form"
-          aria-label="Email verification form"
-        >
-          <FormField
-            control={form.control}
-            name="verify_code"
-            render={({ field }) => (
-              <FormItem className="space-y-2">
-                <FormLabel className="text-sm font-semibold text-white">Verification code</FormLabel>
-                <Input
-                  {...field}
-                  ref={verifyCodeRef}
-                  value={field.value || ""}
-                  placeholder="000000"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  className="tracking-[0.35em] rounded-lg border-white/10 bg-slate-950/60 text-center text-lg font-semibold uppercase text-white placeholder:text-slate-400/80 focus-visible:border-sky-400/70 focus-visible:ring-sky-400/60 focus-visible:ring-offset-0"
-                  maxLength={6}
-                  disabled={form.formState.isSubmitting}
-                  aria-describedby="verify-help"
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div id="verify-help" className="sr-only">
-            Enter the 6-digit verification code sent to your email address.
+      <div className="space-y-6" role="status" aria-label="Email verification instructions">
+        {!firebaseAuthEnabled && (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-left text-sm text-amber-100">
+            {firebaseConfigError}
           </div>
+        )}
+        <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4 text-left text-slate-300">
+          <p className="text-sm leading-6">
+            The verification email comes from Firebase Auth. If you do not see it, check spam and promotions, then resend it below.
+          </p>
+        </div>
+        <div id="verify-help" className="sr-only">
+          Open the verification email, click the link, then press the button below to continue.
+        </div>
           <Button
-            type="submit"
-            disabled={form.formState.isSubmitting}
+            type="button"
+            onClick={handleVerificationRefresh}
+            disabled={isChecking || !firebaseAuthEnabled}
             className="w-full rounded-lg bg-primary/90 text-primary-foreground shadow-[0_25px_80px_-45px_rgba(59,130,246,0.95)] cursor-pointer"
           >
-            {form.formState.isSubmitting ? "Verifying..." : "Verify"}
+            {isChecking ? "Checking..." : "I've verified my email"}
           </Button>
           <div className="text-center">
             <button
               type="button"
               onClick={handleResendCode}
-              disabled={isResending}
+              disabled={isResending || !firebaseAuthEnabled}
               className="text-sm text-sky-400 hover:text-sky-300 underline disabled:opacity-50 cursor-pointer"
             >
-              {isResending ? "Sending..." : "Didn't receive a code? Resend"}
+              {isResending ? "Sending..." : "Didn't receive an email? Resend"}
             </button>
           </div>
-        </form>
-      </Form>
+      </div>
     </AuthShell>
   );
 }

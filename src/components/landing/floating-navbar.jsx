@@ -1,95 +1,115 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/contexts/AuthContext";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { useAuth } from "@/contexts/use-auth";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion as Motion } from "framer-motion";
-import { ChevronDown, LogOut, Settings, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { BookOpenText, FileCode2, LifeBuoy } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
+const AccountMenu = lazy(() => import("@/components/landing/account-menu"));
+
+const footerHighlightLinks = [
+  { name: "Docs", link: "/documentation", icon: <BookOpenText size={16} /> },
+  { name: "API", link: "/api-reference", icon: <FileCode2 size={16} /> },
+  { name: "Support", link: "/support", icon: <LifeBuoy size={16} /> },
+];
 
 export const FloatingNav = ({ navItems, className }) => {
   const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
+
+  const getCompactLabel = (navItem) => navItem.icon || <span className="text-[11px] font-semibold">{navItem.name.slice(0, 1)}</span>;
+
+  const secondaryNavItems = footerHighlightLinks.filter(
+    (item) => !navItems.some((navItem) => navItem.link === item.link)
+  );
+
+  const getLinkClasses = (link, isSecondary = false) => {
+    const isActive = location.pathname === link;
+    const isPrimaryCta = link === "/chat";
+
+    return cn(
+      "group relative flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-all duration-200",
+      isPrimaryCta
+        ? "border-white/14 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:border-white/18 hover:bg-white/14 hover:text-white"
+        : isSecondary
+          ? "border-white/6"
+          : "border-transparent",
+      isActive
+        ? isPrimaryCta
+          ? "border-white/20 bg-white/14 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.05)]"
+          : "border-white/14 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_10px_30px_rgba(0,0,0,0.22)]"
+        : isPrimaryCta
+          ? ""
+          : "text-zinc-300 hover:border-white/10 hover:bg-white/6 hover:text-white"
+    );
+  };
 
   return (
-    <AnimatePresence mode="wait">
-      <Motion.div
-        initial={{
-          opacity: 1,
-          y: -100,
-        }}
-        animate={{
-          y: 0,
-          opacity: 1,
-        }}
-        transition={{
-          duration: 0.2,
-        }}
+      <div
         className={cn(
-          "flex max-w-fit  fixed top-10 inset-x-0 mx-auto border border-transparent dark:border-white/[0.2] rounded-full dark:bg-white bg-black shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_1px_0px_0px_rgba(25,28,33,0.02),0px_0px_0px_1px_rgba(25,28,33,0.08)] z-[5000] pr-2 pl-8 py-2  items-center justify-center space-x-4",
+          "fixed inset-x-0 top-5 z-[5000] flex items-center justify-center px-4 transition-[transform,opacity] duration-300 sm:px-6 lg:px-8 [font-family:Sora,Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif]",
+          isVisible ? "translate-y-0 opacity-100" : "-translate-y-6 opacity-0",
           className
         )}
       >
-        {navItems.map((navItem, idx) => (
+        <div className="absolute left-4 top-1/2 z-10 flex -translate-y-1/2 items-center sm:left-6 lg:left-8">
           <Link
-            key={`link=${idx}`}
-            to={navItem.link}
-            className={cn(
-              "relative dark:text-neutral-50 items-center flex space-x-1 text-white dark:hover:text-neutral-300 hover:text-neutral-500"
-            )}
+            to="/"
+            className="px-1 py-2 text-sm font-semibold tracking-[0.05rem] text-white/95 transition-colors hover:text-white"
           >
-            <span className="block sm:hidden">{navItem.icon}</span>
-            <span className="hidden sm:block text-sm">{navItem.name}</span>
+            <span>Advista</span>
           </Link>
-        ))}
+        </div>
 
-        {isAuthenticated ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="border flex text-sm font-medium relative border-neutral-200 dark:border-white/[0.2] text-white dark:text-white px-4 py-2 rounded-full">
-                <User size={16} className="mr-2" />
-                <ChevronDown size={14} className="ml-2" />
-                <span className="absolute inset-x-0 w-1/2 mx-auto -bottom-px bg-gradient-to-r from-transparent via-blue-500 to-transparent  h-px" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56 mt-4 bg-primary-bg text-white border-gray-700" align="end">
-              <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem className="text-white hover:bg-gray-700 focus:bg-gray-700">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-white hover:bg-gray-700 focus:bg-gray-700">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={logout}
-                className="text-red-400 hover:bg-gray-700 focus:bg-gray-700 hover:text-red-300 focus:text-red-300"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <button
-            onClick={() => (window.location.href = "/sign-in")}
-            className="border text-sm font-medium relative border-neutral-200 dark:border-white/[0.2] text-white dark:text-white px-4 py-2 rounded-full"
-          >
-            <span>Login</span>
-            <span className="absolute inset-x-0 w-1/2 mx-auto -bottom-px bg-gradient-to-r from-transparent via-blue-500 to-transparent  h-px" />
-          </button>
-        )}
-      </Motion.div>
-    </AnimatePresence>
+        <div className="relative flex min-w-0 justify-center px-20 sm:px-24 lg:px-32">
+          <div className="relative flex min-w-0 items-center gap-1 overflow-hidden rounded-[24px] border border-white/10 bg-black/45 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.42)] backdrop-blur-2xl supports-[backdrop-filter]:bg-black/35">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16),transparent_42%),linear-gradient(90deg,rgba(139,92,246,0.12),rgba(59,130,246,0.08),rgba(139,92,246,0.12))] opacity-60" />
+            <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
+
+            <div className="relative flex min-w-0 items-center gap-1 rounded-full border border-white/8 bg-black/20 p-1">
+              {navItems.map((navItem, idx) => (
+                <Link key={`link=${idx}`} to={navItem.link} className={getLinkClasses(navItem.link)}>
+                  <span className="flex h-4 w-4 items-center justify-center sm:hidden">{getCompactLabel(navItem)}</span>
+                  <span className="hidden sm:block">{navItem.name}</span>
+                </Link>
+              ))}
+            </div>
+
+            <div className="relative hidden items-center gap-1 rounded-full border border-white/8 bg-black/20 p-1 lg:flex">
+              {secondaryNavItems.map((navItem) => (
+                <Link key={navItem.link} to={navItem.link} className={getLinkClasses(navItem.link, true)}>
+                  <span className="text-zinc-400 transition-colors group-hover:text-white">{navItem.icon}</span>
+                  <span>{navItem.name}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 items-center sm:right-6 lg:right-8">
+          {isAuthenticated ? (
+            <Suspense fallback={<div className="h-10 w-10 rounded-full border border-white/10 bg-white/7" />}>
+              <AccountMenu user={user} logout={logout} />
+            </Suspense>
+          ) : (
+            <button
+              onClick={() => navigate("/sign-in")}
+              className="relative rounded-full border border-white/10 bg-white/8 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/14"
+            >
+              <span>Login</span>
+              <span className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-violet-400/80 to-transparent" />
+            </button>
+          )}
+        </div>
+      </div>
   );
 };

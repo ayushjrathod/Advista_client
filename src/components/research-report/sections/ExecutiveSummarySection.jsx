@@ -4,9 +4,9 @@ import { Download } from "lucide-react";
 
 export function ExecutiveSummarySection({ report, onExportPDF }) {
   if (!report) return null;
-  const competitorCount = report.competitor_analysis?.main_competitors?.length || 0;
+  const competitorCount = report.competitor_landscape_analysis?.main_competitors?.length || 0;
   const actionItemsCount = report.action_items?.length || 0;
-  const platformsCount = report.platform_strategy?.platform_recommendations?.length || 0;
+  const platformsCount = report.go_to_market_strategy?.channel_recommendations?.length || 0;
 
   return (
     <div key="executive" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -59,7 +59,7 @@ export function ExecutiveSummarySection({ report, onExportPDF }) {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{platformsCount}</div>
-            <p className="text-xs text-zinc-500 mt-1">Channels for distribution</p>
+            <p className="text-xs text-zinc-500 mt-1">Channels for go-to-market</p>
           </CardContent>
         </Card>
       </div>

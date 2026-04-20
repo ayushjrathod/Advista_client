@@ -16,6 +16,7 @@ import {
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { unwrapLambdaResponse } from "@/lib/lambdaResponse";
+import api from "@/lib/api";
 import {
   ActionItemsSection,
   AudienceAnalysisSection,
@@ -29,8 +30,6 @@ import {
   printStyles,
 } from "@/components/research-report";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
 function renderContent(sectionId, report, resourcesUsed, onExportPDF) {
   switch (sectionId) {
     case "executive":
@@ -40,29 +39,29 @@ function renderContent(sectionId, report, resourcesUsed, onExportPDF) {
     case "actions":
       return <ActionItemsSection actionItems={report.action_items} />;
     case "product":
-      return <ProductAnalysisSection productAnalysis={report.product_analysis} />;
+      return <ProductAnalysisSection productAnalysis={report.company_product_analysis} />;
     case "competitor":
       return (
         <CompetitorAnalysisSection
-          competitorAnalysis={report.competitor_analysis}
+          competitorAnalysis={report.competitor_landscape_analysis}
         />
       );
     case "audience":
       return (
         <AudienceAnalysisSection
-          audienceAnalysis={report.audience_analysis}
+          audienceAnalysis={report.customer_sentiment_analysis}
         />
       );
     case "campaign":
       return (
         <CampaignStrategySection
-          campaignRecommendations={report.campaign_recommendations}
+          campaignRecommendations={report.strategic_recommendations}
         />
       );
     case "platform":
       return (
         <PlatformStrategySection
-          platformStrategy={report.platform_strategy}
+          platformStrategy={report.go_to_market_strategy}
         />
       );
     case "resources":
@@ -81,6 +80,7 @@ export default function ResearchReport() {
   const [resourcesUsed, setResourcesUsed] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [infoMessage, setInfoMessage] = useState("");
   const [activeSection, setActiveSection] = useState("executive");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -108,15 +108,11 @@ export default function ResearchReport() {
       }
 
       try {
-        const url = sessionId
-          ? `${API_URL}/api/v1/research/report?session_id=${sessionId}`
-          : `${API_URL}/api/v1/research/report`;
-        const res = await fetch(url, {
-          credentials: "include",
+        const res = await api.get("/api/v1/research/report", {
+          params: sessionId ? { session_id: sessionId } : undefined,
         });
-        if (!res.ok) throw new Error("Failed to fetch report");
-        const data = await res.json();
-        const payload = unwrapLambdaResponse(data);
+        const payload = unwrapLambdaResponse(res.data);
+        setInfoMessage(payload?.message || "");
         setReport(payload?.report ?? payload);
         setResourcesUsed(payload?.resources_used ?? payload?.resourcesUsed ?? null);
       } catch (err) {
@@ -141,11 +137,11 @@ export default function ResearchReport() {
   const navItems = [
     { id: "executive", label: "Executive Summary", icon: BarChart3 },
     { id: "actions", label: "Action Items", icon: CheckCircle2 },
-    { id: "product", label: "Product Analysis", icon: Package },
-    { id: "competitor", label: "Competitor Analysis", icon: Target },
-    { id: "audience", label: "Audience Analysis", icon: Users },
-    { id: "campaign", label: "Campaign Strategy", icon: Megaphone },
-    { id: "platform", label: "Platform Strategy", icon: LayoutGrid },
+    { id: "product", label: "Company & Product", icon: Package },
+    { id: "competitor", label: "Competitor Landscape", icon: Target },
+    { id: "audience", label: "Customer Sentiment", icon: Users },
+    { id: "campaign", label: "Strategic Recommendations", icon: Megaphone },
+    { id: "platform", label: "Go-to-Market Strategy", icon: LayoutGrid },
     ...(resourcesUsed != null
       ? [{ id: "resources", label: "Resources Used", icon: ExternalLink }]
       : []),
@@ -173,7 +169,7 @@ export default function ResearchReport() {
           </div>
           <h2 className="text-xl font-semibold mb-2">Unable to Load Report</h2>
           <p className="text-zinc-400 mb-8">
-            {error ||
+            {error || infoMessage ||
               "No report found. Please try generating a new report."}
           </p>
           <Button
@@ -228,6 +224,11 @@ export default function ResearchReport() {
 
         <ScrollArea className="flex-1 min-h-0 overflow-hidden">
           <div className="max-w-5xl mx-auto p-6 lg:p-10 print:p-0 print:max-w-none">
+            {infoMessage ? (
+              <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 no-print">
+                {infoMessage}
+              </div>
+            ) : null}
             {isPrinting ? (
               <div className="space-y-12 print:space-y-12">
                 <div className="mb-8 print:mb-8 hidden print:block">

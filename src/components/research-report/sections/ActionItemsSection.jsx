@@ -6,7 +6,7 @@ export function ActionItemsSection({ actionItems }) {
     <div key="actions" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Action Items</h2>
-        <p className="text-zinc-400">Recommended next steps for your campaign</p>
+        <p className="text-zinc-400">Recommended next steps for your competitive strategy</p>
       </div>
       {actionItems?.length > 0 ? (
         <div className="grid gap-4">

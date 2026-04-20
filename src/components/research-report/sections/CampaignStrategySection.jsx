@@ -8,8 +8,8 @@ export function CampaignStrategySection({ campaignRecommendations }) {
   return (
     <div key="campaign" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-2xl font-bold text-white mb-2">Campaign Strategy</h2>
-        <p className="text-zinc-400">Strategic recommendations for your campaign</p>
+        <h2 className="text-2xl font-bold text-white mb-2">Strategic Recommendations</h2>
+        <p className="text-zinc-400">Strategic recommendations for competitive positioning</p>
       </div>
 
       <Card className="bg-zinc-900/50 border-zinc-800">
@@ -21,12 +21,12 @@ export function CampaignStrategySection({ campaignRecommendations }) {
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-base">Recommended Objectives</CardTitle>
+            <CardTitle className="text-base">Strategic Priorities</CardTitle>
           </CardHeader>
           <CardContent>
-            {campaignRecommendations.recommended_objectives?.length > 0 ? (
+            {campaignRecommendations.strategic_priorities?.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {campaignRecommendations.recommended_objectives.map((o, i) => (
+                {campaignRecommendations.strategic_priorities.map((o, i) => (
                   <Tag key={i} variant="success">
                     {o}
                   </Tag>
@@ -62,13 +62,13 @@ export function CampaignStrategySection({ campaignRecommendations }) {
         <Card className="bg-violet-950/10 border-violet-500/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-violet-400">
-              <Lightbulb className="w-5 h-5" /> Content Ideas
+              <Lightbulb className="w-5 h-5" /> Battlecard Angles
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {campaignRecommendations.content_ideas?.length > 0 ? (
+            {campaignRecommendations.battlecard_angles?.length > 0 ? (
               <ul className="space-y-3">
-                {campaignRecommendations.content_ideas.map((c, i) => (
+                {campaignRecommendations.battlecard_angles.map((c, i) => (
                   <ListItem key={i} icon={Lightbulb} className="text-violet-100/80">
                     {c}
                   </ListItem>
@@ -83,12 +83,12 @@ export function CampaignStrategySection({ campaignRecommendations }) {
         <div className="space-y-6">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-base">Key Messages</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {campaignRecommendations.key_messages?.length > 0 ? (
-                <ul className="space-y-3">
-                  {campaignRecommendations.key_messages.map((m, i) => (
+            <CardTitle className="text-base">Positioning Messages</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {campaignRecommendations.positioning_messages?.length > 0 ? (
+              <ul className="space-y-3">
+                {campaignRecommendations.positioning_messages.map((m, i) => (
                     <ListItem key={i} icon={Megaphone}>
                       {m}
                     </ListItem>
@@ -100,15 +100,15 @@ export function CampaignStrategySection({ campaignRecommendations }) {
             </CardContent>
           </Card>
 
-          {campaignRecommendations.budget_recommendations && (
+          {campaignRecommendations.resource_allocation && (
             <Card className="bg-zinc-900/50 border-zinc-800">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <DollarSign className="w-4 h-4 text-zinc-400" /> Budget
+                  <DollarSign className="w-4 h-4 text-zinc-400" /> Resources
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-zinc-300">{campaignRecommendations.budget_recommendations}</p>
+                <p className="text-zinc-300">{campaignRecommendations.resource_allocation}</p>
               </CardContent>
             </Card>
           )}

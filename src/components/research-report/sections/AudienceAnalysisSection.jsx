@@ -8,8 +8,8 @@ export function AudienceAnalysisSection({ audienceAnalysis }) {
   return (
     <div key="audience" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-2xl font-bold text-white mb-2">Audience Analysis</h2>
-        <p className="text-zinc-400">Understanding your target market</p>
+        <h2 className="text-2xl font-bold text-white mb-2">Customer Sentiment</h2>
+        <p className="text-zinc-400">Understanding what customers say about this space</p>
       </div>
 
       <Card className="bg-zinc-900/50 border-zinc-800">
@@ -21,11 +21,11 @@ export function AudienceAnalysisSection({ audienceAnalysis }) {
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-base">Demographics</CardTitle>
+            <CardTitle className="text-base">Customer Segments</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
-              {Object.entries(audienceAnalysis.demographics || {}).map(([key, value]) => (
+              {Object.entries(audienceAnalysis.customer_segments || {}).map(([key, value]) => (
                 <div key={key} className="p-3 rounded-lg bg-zinc-800/30">
                   <p className="text-xs text-zinc-500 capitalize mb-1">{key.replace(/_/g, " ")}</p>
                   <p className="text-sm font-medium text-zinc-200">
@@ -39,12 +39,12 @@ export function AudienceAnalysisSection({ audienceAnalysis }) {
 
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-base">Psychographics</CardTitle>
+            <CardTitle className="text-base">Buying Triggers</CardTitle>
           </CardHeader>
           <CardContent>
-            {audienceAnalysis.psychographics?.length > 0 ? (
+            {audienceAnalysis.buying_triggers?.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {audienceAnalysis.psychographics.map((p, i) => (
+                {audienceAnalysis.buying_triggers.map((p, i) => (
                   <Tag key={i} variant="info">
                     {p}
                   </Tag>
