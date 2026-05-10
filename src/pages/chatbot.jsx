@@ -1,24 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spotlight } from "@/components/ui/spotlight-new";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { buildAuthHeaders } from "@/lib/firebase";
 import {
   Bot,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Loader2,
-  PanelRightClose,
-  PanelRightOpen,
   SendHorizonal,
   User,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/use-auth";
-import { AnimatePresence, motion } from "framer-motion";
 
 const starterPrompts = [
   "We help B2B SaaS teams monitor competitor pricing and positioning.",
@@ -52,6 +50,7 @@ function BriefItem({ label, value }) {
 
 export default function ChatBot() {
   const navigate = useNavigate();
+  const { threadId: routeThreadId } = useParams();
   const { authMessage, isAuthenticated } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -59,15 +58,57 @@ export default function ChatBot() {
   const [threadId, setThreadId] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [researchBrief, setResearchBrief] = useState(null);
-  const [showBriefPreview, setShowBriefPreview] = useState(false);
   const [isResearching, setIsResearching] = useState(false);
   const [showAuthNotice, setShowAuthNotice] = useState(false);
-  const [showHeader, setShowHeader] = useState(true);
+  const [isBriefExpanded, setIsBriefExpanded] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const initializationDone = useRef(false);
   const hasInteracted = useRef(false);
+
+  const hasAuthNotice = !isAuthenticated && authMessage && showAuthNotice;
+  const authNoticeMessage = hasAuthNotice
+    ? "You're not signed in, but you can still use the chatbot. Consider it as a trial"
+    : "";
+  const briefCompletion = Math.round(researchBrief?.completion_percentage ?? 0);
+  const briefEntries = researchBrief?.brief
+    ? Object.entries(researchBrief.brief).filter(([, value]) => {
+        if (Array.isArray(value)) return value.length > 0;
+        return Boolean(value);
+      })
+    : [];
+  const collapsedBriefEntryCount = 4;
+  const visibleBriefEntries = isBriefExpanded
+    ? briefEntries
+    : briefEntries.slice(0, collapsedBriefEntryCount);
+  const canToggleBrief = briefEntries.length > collapsedBriefEntryCount;
+  const canGenerateReport = Boolean(researchBrief && (researchBrief.is_complete || researchBrief.completion_percentage >= 70));
+  const showGenerateReportGlow = canGenerateReport && !isResearching;
+
+  const getOrCreateThreadId = async () => {
+    if (routeThreadId) {
+      return routeThreadId;
+    }
+
+    if (threadId) {
+      return threadId;
+    }
+
+    const nextThreadId = await api
+      .get("/api/v1/chat/initialize-thread", {
+        timeout: 30000,
+      })
+      .then((res) => res?.data?.thread_id);
+
+    if (!nextThreadId) {
+      throw new Error("Chat not initialized. Please refresh and try again.");
+    }
+
+    setThreadId(nextThreadId);
+    navigate(`/chat/${nextThreadId}`, { replace: true });
+    return nextThreadId;
+  };
 
   const scrollToBottom = () => {
     if (!hasInteracted.current) return;
@@ -91,6 +132,16 @@ export default function ChatBot() {
       inputRef.current.focus();
     }
   }, [messages.length, isLoading]);
+
+  useEffect(() => {
+    if (routeThreadId) {
+      setThreadId(routeThreadId);
+      fetchResearchBrief(routeThreadId);
+      return;
+    }
+    setThreadId(null);
+    setResearchBrief(null);
+  }, [routeThreadId]);
 
   // Initialize chat session
   useEffect(() => {
@@ -120,41 +171,29 @@ export default function ChatBot() {
     initializeChat();
   }, []);
 
+  useEffect(() => {
+    setIsBriefExpanded(false);
+  }, [threadId, researchBrief?.completion_percentage]);
+
   const sendUserMessage = async (message) => {
     hasInteracted.current = true;
-    setShowHeader(false);
+    setErrorMessage(null);
     // Add user message
     setMessages((prev) => [...prev, { id: Date.now(), role: "user", content: message }]);
     setInput("");
-
-    let tid = threadId;
-
-    // Only initialize thread once
-    if (!tid) {
-      const nextThreadId = await api
-        .get("/api/v1/chat/initialize-thread", {
-          timeout: 30000,
-        })
-        .then((res) => res?.data?.thread_id);
-
-      if (!nextThreadId) {
-        setErrorMessage("Chat not initialized. Please refresh and try again.");
-        setInput(message);
-        return;
-      }
-      tid = nextThreadId;
-      setThreadId(tid);
-    }
 
     //reset textarea height
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
     }
+
     try {
+      const tid = await getOrCreateThreadId();
       await sendStreamingMessage(message, tid);
     } catch (error) {
       console.error("Error sending message:", error);
-      setErrorMessage("The chat service took too long to respond. Please try again.");
+      setErrorMessage(error.message || "The chat service took too long to respond. Please try again.");
+      setInput(message);
     }
   };
  
@@ -170,10 +209,6 @@ export default function ChatBot() {
       if (res.ok) {
         const data = await res.json();
         setResearchBrief(data);
-        // Show preview if brief has any progress at all
-        if (data?.is_complete || (data?.completion_percentage ?? 0) > 0) {
-          setShowBriefPreview(true);
-        }
       }
     } catch (error) {
       console.error("Error fetching research brief:", error);
@@ -185,7 +220,6 @@ export default function ChatBot() {
 
     try {
       setIsResearching(true);
-      setShowBriefPreview(false);
 
       // Add progress message
       setMessages((prev) => [
@@ -409,21 +443,8 @@ export default function ChatBot() {
     await sendUserMessage(prompt);
   };
 
-  const hasAuthNotice = !isAuthenticated && authMessage && showAuthNotice;
-  const authNoticeMessage = hasAuthNotice
-    ? "You're not signed in, but you can still use the chatbot. Consider it as a trial"
-    : "";
-  const briefCompletion = Math.round(researchBrief?.completion_percentage ?? 0);
-  const briefEntries = researchBrief?.brief
-    ? Object.entries(researchBrief.brief).filter(([, value]) => {
-        if (Array.isArray(value)) return value.length > 0;
-        return Boolean(value);
-      })
-    : [];
-  const canGenerateReport = Boolean(researchBrief && (researchBrief.is_complete || researchBrief.completion_percentage >= 70));
-
   return (
-    <div className="relative min-h-dvh overflow-x-hidden overflow-y-auto bg-[#08090A] text-white">
+    <div className="relative min-h-dvh overflow-x-hidden bg-[#08090A] text-white lg:h-screen lg:overflow-hidden">
       {hasAuthNotice ? (
         <div className="fixed top-4 right-4 z-50 flex items-start gap-3 rounded-xl border border-white/10 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 shadow-lg backdrop-blur-md">
           <p className="leading-6">{authNoticeMessage}</p>
@@ -440,60 +461,38 @@ export default function ChatBot() {
       <Spotlight />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.16),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.10),transparent_26%)]" />
 
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1440px] flex-col box-border px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-6 lg:px-8 lg:pt-[max(1rem,env(safe-area-inset-top))] lg:pb-4">
-        <AnimatePresence>
-          {showHeader ? (
-            <motion.div
-              key="header"
-              initial={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0, paddingBottom: 0 }}
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-              className="mb-4 overflow-hidden border-b border-white/8 pb-4"
-            >
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-500">
-                    <span className="text-violet-200">Advista Copilot</span>
-                    <span className="text-zinc-700">•</span>
-                    <span>Competitive Intelligence</span>
-                  </div>
-                  <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">Build your research brief</h1>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-[15px]">
-                    Describe your company, competitors, customer pains, and strategic goals. The brief updates automatically as you chat.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm text-zinc-400">
-                  <span>{messages.length} messages</span>
-                  <span className="text-zinc-700">•</span>
-                  <span>{briefCompletion}% brief complete</span>
-                </div>
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1440px] flex-col box-border px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-6 lg:h-full lg:min-h-0 lg:px-8 lg:pt-[max(1rem,env(safe-area-inset-top))] lg:pb-4">
+        <div className="mb-4 shrink-0 border-b border-white/8 pb-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-500">
+                <span className="text-violet-200">Advista Copilot</span>
+                <span className="text-zinc-700">•</span>
+                <span>Competitive Intelligence</span>
               </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-[15px]">
+                To build a research brief, describe your company, competitors, customer pains, and strategic goals.
+              </p>
+            </div>
 
-        <div className="grid flex-1 gap-4 lg:grid-cols-[minmax(0,1.45fr)_380px] xl:grid-cols-[minmax(0,1.65fr)_400px]">
-          <Card className="flex min-h-[calc(100dvh-11rem)] flex-col border-white/8 bg-white/[0.02] py-0 backdrop-blur-xl">
+            <div className="flex items-center gap-3 text-sm text-zinc-400">
+              <span>{messages.length} messages</span>
+              <span className="text-zinc-700">•</span>
+              <span>{briefCompletion}% brief complete</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(0,1.45fr)_380px] xl:grid-cols-[minmax(0,1.65fr)_400px]">
+          <Card className="flex min-h-[calc(100dvh-11rem)] flex-col border-white/8 bg-white/[0.02] py-0 backdrop-blur-xl lg:min-h-0 lg:h-full">
             <CardContent className="flex items-center justify-between gap-4 border-b border-white/6 px-5 py-4 sm:px-6">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">Conversation</p>
                 <h2 className="mt-1 text-lg font-semibold text-white">Research intake chat</h2>
+                <p className="mt-1 text-sm text-zinc-500">Tell the assistant about your company, market, and competitors. The brief updates live on the right.</p>
               </div>
-              {researchBrief ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowBriefPreview((prev) => !prev)}
-                  className="border-white/10 bg-transparent text-white hover:bg-white/[0.04]"
-                >
-                  {showBriefPreview ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-                  {showBriefPreview ? "Hide brief" : "Show brief"}
-                </Button>
-              ) : null}
             </CardContent>
 
-            <ScrollArea className="flex-1 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="scrollbar-hidden flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:min-h-0">
               <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 pb-4">
                 {messages.length <= 1 ? (
                   <div className="pb-2">
@@ -576,9 +575,9 @@ export default function ChatBot() {
 
                 <div ref={messagesEndRef} />
               </div>
-            </ScrollArea>
+            </div>
 
-            <div className="border-t border-white/6 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="shrink-0 border-t border-white/6 px-4 py-4 sm:px-6 sm:py-5">
               <form onSubmit={onSubmit} className="mx-auto flex w-full max-w-4xl flex-col gap-3">
                 <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-transparent">
                   <textarea
@@ -614,17 +613,25 @@ export default function ChatBot() {
                   <p>Press Enter to send, Shift + Enter for a new line.</p>
                   <p>The brief updates automatically as you chat.</p>
                 </div>
+
+                {canGenerateReport && !isResearching ? (
+                  <div className="mt-1 flex items-center gap-2 rounded-xl border border-violet-500/15 bg-violet-500/[0.04] px-4 py-2.5 text-[13px] leading-5 text-zinc-400">
+                    <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-violet-400" />
+                    Continue adding context for a stronger report, or click <span className="font-medium text-violet-300">Generate CI Report</span> to proceed.
+                  </div>
+                ) : null}
               </form>
             </div>
           </Card>
 
-          <aside className={cn("flex flex-col gap-4", !researchBrief && "lg:opacity-100", researchBrief && !showBriefPreview && "hidden lg:flex") }>
-            <Card className="border-white/8 bg-white/[0.02] py-0 backdrop-blur-xl lg:sticky lg:top-6">
-              <CardContent className="px-5 py-5 sm:px-6">
+          <aside className="flex flex-col gap-4 lg:min-h-0 lg:h-full">
+            <Card className="border-white/8 bg-white/[0.02] py-0 backdrop-blur-xl lg:h-full lg:overflow-hidden">
+              <CardContent className="flex h-full min-h-0 flex-col px-5 py-5 sm:px-6">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">Live brief</p>
                     <h2 className="mt-1 text-lg font-semibold text-white">Research brief preview</h2>
+                    <p className="mt-1 text-sm text-zinc-500">Use this as your decision panel while you continue the intake conversation.</p>
                   </div>
                   {researchBrief ? (
                     <div className="px-3 py-1 text-xs font-medium text-zinc-400">
@@ -635,60 +642,85 @@ export default function ChatBot() {
 
                 {researchBrief ? (
                   <>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/6">
-                      <div
-                        className="h-full rounded-full bg-white transition-all"
-                        style={{ width: `${briefCompletion}%` }}
-                      />
-                    </div>
-
-                    <p className="mt-3 text-sm leading-6 text-zinc-400">
-                      {canGenerateReport
-                        ? "You have enough detail to generate a report now, or keep adding context for a stronger output."
-                        : "Keep chatting to fill in competitors, target customers, channels, and strategic goals."}
-                    </p>
-
-                    <div className="mt-5">
-                      {briefEntries.length > 0 ? (
-                        briefEntries.map(([key, value]) => (
-                          <BriefItem key={key} label={briefFieldLabels[key] || key} value={value} />
-                        ))
-                      ) : (
-                        <div className="py-3 text-sm leading-6 text-zinc-500">
-                          No brief fields captured yet. Start the conversation and this panel will fill in automatically.
-                        </div>
+                    <div
+                      className={cn(
+                        "scrollbar-hidden relative mt-4 min-h-0",
+                        isBriefExpanded
+                          ? "flex-1 overflow-y-auto pr-1"
+                          : "overflow-visible"
                       )}
+                    >
+                      <div className="h-2 overflow-hidden rounded-full bg-white/6">
+                        <div
+                          className="h-full rounded-full bg-white transition-all"
+                          style={{ width: `${briefCompletion}%` }}
+                        />
+                      </div>
+
+                      <p className="mt-3 text-sm leading-6 text-zinc-400">
+                        {canGenerateReport
+                          ? "You have enough detail to generate a report now, or keep adding context for a stronger output."
+                          : "Keep chatting to fill in competitors, target customers, channels, and strategic goals."}
+                      </p>
+
+                      <div className="mt-5">
+                        {visibleBriefEntries.length > 0 ? (
+                          visibleBriefEntries.map(([key, value]) => (
+                            <BriefItem key={key} label={briefFieldLabels[key] || key} value={value} />
+                          ))
+                        ) : (
+                          <div className="py-3 text-sm leading-6 text-zinc-500">
+                            No brief fields captured yet. Start the conversation and this panel will fill in automatically.
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="mt-5 flex flex-col gap-3">
-                      <Button
-                        onClick={handleConfirmBrief}
-                        disabled={isResearching || !canGenerateReport}
-                        className="h-11 rounded-2xl bg-black text-white hover:bg-zinc-900"
-                      >
-                        {isResearching ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Generating CI report...
-                          </>
-                        ) : (
-                          <>
-                            Generate CI Report
-                          </>
-                        )}
-                      </Button>
-
-                      {!showBriefPreview ? null : (
+                    <div className="mt-5 shrink-0 border-t border-white/8 pt-4 flex flex-col gap-3">
+                      {canToggleBrief ? (
                         <Button
                           type="button"
                           variant="ghost"
-                          onClick={() => setShowBriefPreview(false)}
-                          className="text-zinc-400 hover:bg-white/[0.04] hover:text-white lg:hidden"
+                          onClick={() => setIsBriefExpanded((prev) => !prev)}
+                          className="h-10 rounded-2xl border border-white/10 text-zinc-300 hover:bg-white/[0.04] hover:text-white"
+                          aria-label={isBriefExpanded ? "Collapse research brief" : "Expand research brief"}
                         >
-                          <PanelRightClose className="h-4 w-4" />
-                          Hide brief
+                          {isBriefExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </Button>
-                      )}
+                      ) : null}
+
+                      <div className={cn("relative rounded-2xl", showGenerateReportGlow && "group/glow")}>
+                        {showGenerateReportGlow ? (
+                          <>
+                            <div className="absolute -inset-px z-0 overflow-hidden rounded-2xl">
+                              <div className="absolute inset-[-200%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_0deg,transparent_0%,rgba(139,92,246,0.5)_10%,transparent_20%)]" />
+                            </div>
+                            <div className="absolute inset-0 z-0 rounded-2xl bg-black" />
+                          </>
+                        ) : null}
+                        <Button
+                          onClick={handleConfirmBrief}
+                          disabled={isResearching || !canGenerateReport}
+                          className={cn(
+                            "relative z-10 h-11 w-full rounded-2xl border bg-black text-white transition-all duration-300 hover:bg-zinc-900",
+                            showGenerateReportGlow
+                              ? "border-transparent shadow-[0_0_24px_rgba(139,92,246,0.2)]"
+                              : "border-white/10"
+                          )}
+                        >
+                          {isResearching ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Generating CI report...
+                            </>
+                          ) : (
+                            <>
+                              Generate CI Report
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
                     </div>
                   </>
                 ) : (

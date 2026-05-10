@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { unwrapLambdaResponse } from "@/lib/lambdaResponse";
 import api from "@/lib/api";
 import {
   ActionItemsSection,
@@ -111,7 +110,7 @@ export default function ResearchReport() {
         const res = await api.get("/api/v1/research/report", {
           params: sessionId ? { session_id: sessionId } : undefined,
         });
-        const payload = unwrapLambdaResponse(res.data);
+        const payload = res.data;
         setInfoMessage(payload?.message || "");
         setReport(payload?.report ?? payload);
         setResourcesUsed(payload?.resources_used ?? payload?.resourcesUsed ?? null);

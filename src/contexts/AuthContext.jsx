@@ -1,23 +1,7 @@
-import { useEffect, useState } from "react";
-import { AuthContext } from "./auth-context";
+import { createContext, useEffect, useState } from "react";
+import { firebaseAuthEnabled, firebaseConfigError } from "@/lib/firebase";
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-const requiredFirebaseKeys = ["apiKey", "authDomain", "projectId", "appId"];
-
-const firebaseAuthEnabled = requiredFirebaseKeys.every((key) => {
-  const value = firebaseConfig[key];
-  return typeof value === "string" && value.trim().length > 0;
-});
-
-const firebaseConfigError = firebaseAuthEnabled
-  ? ""
-  : "Firebase auth is not configured in this client. Add the VITE_FIREBASE_* values to your Advista_client/.env file to enable sign-in.";
+export const AuthContext = createContext();
 
 const loadApiClient = async () => {
   const module = await import("@/lib/api");

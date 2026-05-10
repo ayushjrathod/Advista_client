@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const LandingPage = lazy(() => import("./pages/landingPage"));
@@ -63,6 +63,8 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPasswordForm />} />
             <Route path="/reset-password/:email" element={<ResetPasswordForm />} />
             <Route path="/chat" element={<ChatBot />} />
+            <Route path="/chat/:threadId" element={<ChatBot />} />
+            <Route path="/chatbot" element={<Navigate to="/chat" replace />} />
             <Route path="/research-report" element={<ResearchReport />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/cube-recorder" element={<CubeRecorderPage />} />
