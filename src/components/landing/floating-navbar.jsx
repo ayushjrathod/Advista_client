@@ -1,14 +1,13 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/use-auth";
 import { cn } from "@/lib/utils";
-import { BookOpenText, FileCode2, LifeBuoy } from "lucide-react";
+import { Layers, LifeBuoy } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const AccountMenu = lazy(() => import("@/components/landing/account-menu"));
 
 const footerHighlightLinks = [
-  { name: "Docs", link: "/documentation", icon: <BookOpenText size={16} /> },
-  { name: "API", link: "/api-reference", icon: <FileCode2 size={16} /> },
+  { name: "How it works", link: "/about", icon: <Layers size={16} /> },
   { name: "Support", link: "/support", icon: <LifeBuoy size={16} /> },
 ];
 

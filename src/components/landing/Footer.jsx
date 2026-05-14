@@ -10,10 +10,9 @@ const footerLinks = {
     { label: "Go-to-Market Strategy", href: "/chat" },
   ],
   Resources: [
-    { label: "Documentation", href: "/documentation" },
+    { label: "How it works", href: "/about" },
     { label: "Blog", href: "/blog" },
     { label: "Changelog", href: "/changelog" },
-    { label: "API Reference", href: "/api-reference" },
   ],
   Company: [
     { label: "About", href: "/about" },
