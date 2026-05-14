@@ -7,7 +7,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 const AccountMenu = lazy(() => import("@/components/landing/account-menu"));
 
 const footerHighlightLinks = [
-  { name: "How it works", link: "/about", icon: <Layers size={16} /> },
+  { name: "How it works", link: "/how-it-works", icon: <Layers size={16} /> },
   { name: "Support", link: "/support", icon: <LifeBuoy size={16} /> },
 ];
 

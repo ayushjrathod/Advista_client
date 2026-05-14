@@ -46,60 +46,6 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* Features Grid */}
-          <section className="mb-16">
-            <h2 className="text-3xl font-bold text-white mb-12 text-center">How It Works</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800 hover:border-zinc-700 transition-colors">
-                <h3 className="text-xl font-semibold text-white mb-4">Live Signal Collection</h3>
-                <p className="text-zinc-400">
-                  Continuously monitor competitors across Google, YouTube, Reddit, and industry forums. Every run
-                  returns fresh evidence with full source traceability — not a cached summary from last week.
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800 hover:border-zinc-700 transition-colors">
-                <h3 className="text-xl font-semibold text-white mb-4">Structured Intelligence Briefs</h3>
-                <p className="text-zinc-400">
-                  Define your competitor set, target market, and output format once. Advista runs the same
-                  intelligence frame on every collection pass so results are comparable across time.
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800 hover:border-zinc-700 transition-colors">
-                <h3 className="text-xl font-semibold text-white mb-4">Narrative Shift Detection</h3>
-                <p className="text-zinc-400">
-                  Go beyond keyword monitoring. Advista identifies when a competitor's messaging, positioning, or
-                  customer sentiment has meaningfully changed — and surfaces the evidence behind the shift.
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800 hover:border-zinc-700 transition-colors">
-                <h3 className="text-xl font-semibold text-white mb-4">Battlecard & Win-Loss Prep</h3>
-                <p className="text-zinc-400">
-                  Turn raw competitive signals into sales-ready battlecards. Understand where competitors are
-                  winning on messaging and where customer objections create openings for your team.
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800 hover:border-zinc-700 transition-colors">
-                <h3 className="text-xl font-semibold text-white mb-4">Strategic Recommendations</h3>
-                <p className="text-zinc-400">
-                  Every briefing ends with a clear next move — sharpen a proof point, adjust pricing narrative,
-                  or reframe an objection — grounded in the signals collected, not generic advice.
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800 hover:border-zinc-700 transition-colors">
-                <h3 className="text-xl font-semibold text-white mb-4">Source-Linked Evidence</h3>
-                <p className="text-zinc-400">
-                  Every claim links back to the exact source, excerpt, and channel it came from. Your team can
-                  verify findings, share proof with stakeholders, and export the full evidence trail.
-                </p>
-              </div>
-            </div>
-          </section>
-
           {/* Who It's For */}
           <section className="mb-16">
             <h2 className="text-3xl font-bold text-white mb-12 text-center">Built For</h2>

@@ -4,6 +4,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 
 const LandingPage = lazy(() => import("./pages/landingPage"));
 const AboutPage = lazy(() => import("./pages/about"));
+const HowItWorksPage = lazy(() => import("./pages/how-it-works"));
 const TermsOfServicePage = lazy(() => import("./pages/footer/terms-of-service"));
 const PrivacyPolicyPage = lazy(() => import("./pages/footer/privacy-policy"));
 const DocumentationPage = lazy(() => import("./pages/footer/documentation"));
@@ -45,6 +46,7 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/documentation" element={<DocumentationPage />} />

@@ -61,14 +61,14 @@ export default function SupportPage() {
             </div>
             <h2 className="text-2xl font-semibold text-white mb-3">Still have questions?</h2>
             <p className="text-zinc-400 mb-6 max-w-md mx-auto">
-              Reach out and we'll get back to you as soon as possible.
+              Reach out and I will get back to you as soon as possible.
             </p>
             <a
-              href="mailto:support@advista.ai"
+              href="mailto:ayushjrathod7@gmail.com"
               className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800 px-6 py-3 text-sm font-medium text-white hover:bg-zinc-700 transition-colors"
             >
               <Mail className="h-4 w-4" />
-              support@advista.ai
+              ayushjrathod7@gmail.com
             </a>
           </div>
         </div>
