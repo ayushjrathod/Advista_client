@@ -110,7 +110,7 @@ export default function SignUpForm() {
   return (
     <AuthShell
       title="Create your account"
-      description="Join Advista to unlock AI-driven research workflows and human-centered insights."
+      description="Join Advista to monitor competitors and drive strategy with evidence-backed intelligence."
       contentClassName="sm:space-y-7"
       footer={
         <p className="text-white">
