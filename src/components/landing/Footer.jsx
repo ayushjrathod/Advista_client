@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 const footerLinks = {
   Features: [
-    { label: "Research Reports", href: "/chat" },
+    { label: "Intelligence Reports", href: "/chat" },
     { label: "Competitor Analysis", href: "/chat" },
     { label: "Customer Sentiment", href: "/chat" },
     { label: "Strategic Recommendations", href: "/chat" },
@@ -24,12 +24,6 @@ const footerLinks = {
     { label: "Support", href: "/support" },
     { label: "Status", href: "/status" },
     { label: "FAQ", href: "/faq" },
-  ],
-  Community: [
-    { label: "Twitter / X", href: "#" },
-    { label: "LinkedIn", href: "#" },
-    { label: "GitHub", href: "#" },
-    { label: "Discord", href: "#" },
   ],
 };
 
