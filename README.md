@@ -2,6 +2,8 @@
 
 React and Vite frontend for Advista — a competitive intelligence and ad research assistant. Handles Firebase auth, chat-driven research intake, live SSE streaming, and report rendering.
 
+The api has seprate repo: [Advista API](https://github.com/ayushjrathod/Advista_api)
+
 ---
 
 ## What is this project?
