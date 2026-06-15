@@ -96,7 +96,7 @@ export default function ChatBot() {
     }
 
     const nextThreadId = await api
-      .get("/api/v1/chat/initialize-thread", {
+      .post("/api/v1/chat/initialize-thread", {}, {
         timeout: 30000,
       })
       .then((res) => res?.data?.thread_id);
